@@ -52,6 +52,10 @@ final class OtaUpdater {
             "objects.githubusercontent.com",
             "release-assets.githubusercontent.com");
 
+    private static final java.util.regex.Pattern ASSET_VERSION =
+            java.util.regex.Pattern.compile("-(\\d[0-9.]*?)\\.apk$",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
     private static final int TIMEOUT_MS = 10_000;
 
     private OtaUpdater() { }
@@ -114,6 +118,18 @@ final class OtaUpdater {
         return out;
     }
 
+    /**
+     * Version carried by an unstable asset name:
+     * "MG4AbrpTelemetry-unstable-1.0.42.apk" -> "1.0.42".
+     *
+     * The release tag is the fixed string "unstable" (one rolling pre-release), so the asset
+     * name is what identifies a build. Returns null when the name carries no version.
+     */
+    static String versionFromAssetName(String assetName) {
+        java.util.regex.Matcher m = ASSET_VERSION.matcher(assetName);
+        return m.find() ? m.group(1) : null;
+    }
+
     /** True if [remote] is a strictly higher version than [current]. */
     static boolean isNewer(String remote, String current) {
         int[] r = segments(remote);
@@ -160,14 +176,13 @@ final class OtaUpdater {
             // Stable releases are skipped on purpose. This channel tracks pre-releases
             // only — and a stable APK could not update a unstable install anyway, since
             // the unstable applicationId carries a .unstable suffix.
+            //
+            // The version comes from the asset name, not the tag: the unstable channel is
+            // a single rolling pre-release tagged "unstable", overwritten on every build.
             Update best = null;
             for (int i = 0; i < releases.length(); i++) {
                 JSONObject release = releases.getJSONObject(i);
                 if (!release.optBoolean("prerelease", false)) continue;
-
-                String tag = release.optString("tag_name", "");
-                if (!isNewer(tag, currentVersion)) continue;
-                if (best != null && !isNewer(tag, best.versionName)) continue;
 
                 JSONArray assets = release.optJSONArray("assets");
                 if (assets == null) continue;
@@ -177,12 +192,17 @@ final class OtaUpdater {
                     if (!name.toLowerCase(java.util.Locale.US).endsWith(".apk")) continue;
                     if (!name.contains("unstable")) continue;
 
+                    String version = versionFromAssetName(name);
+                    if (version == null) continue;
+                    if (!isNewer(version, currentVersion)) continue;
+                    if (best != null && !isNewer(version, best.versionName)) continue;
+
                     String url = asset.optString("browser_download_url", "");
                     if (!isAllowedUrl(url)) {
                         Log.w(TAG, "Rejected update URL from an unexpected host: " + url);
                         continue;
                     }
-                    best = new Update(tag, url);
+                    best = new Update(version, url);
                     break;
                 }
             }
@@ -197,7 +217,7 @@ final class OtaUpdater {
 
     /**
      * Name the downloaded APK gets in public Downloads. The version comes from a remote
-     * tag, so it is reduced to a safe character set before it reaches a path. Callers that
+     * asset name, so it is reduced to a safe character set before it reaches a path. Callers that
      * look for an already-downloaded update must use this same name.
      */
     static String downloadFileName(String versionName) {

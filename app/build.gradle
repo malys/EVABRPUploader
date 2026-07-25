@@ -98,8 +98,9 @@ android {
     }
 }
 
-// Version publiée par la CI pour composer le tag de la pré-release : le tag DOIT être
-// comparable par l'updater, donc "v1.0.42" et non "unstable-42".
+// Version publiée par la CI pour composer le nom de l'asset APK : ce nom DOIT être
+// comparable par l'updater ("MG4AbrpTelemetry-unstable-1.0.42.apk"). Le tag de la
+// pré-release est la constante "unstable", écrasée à chaque build.
 tasks.register('printUnstableVersion') {
     doLast {
         println "${android.defaultConfig.versionName}.${project.findProperty('unstableBuild') ?: '0'}"

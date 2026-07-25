@@ -25,6 +25,15 @@ unit and talks to ABRP directly.
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/mg4ABRP1.png" width="280" alt="MG4 ABRP Telemetry screenshot 1">
+  <img src="screenshots/mg4ABRP2.png" width="280" alt="MG4 ABRP Telemetry screenshot 2">
+</p>
+
+---
+
 ## What it does
 
 | Signal | Source | Firmwares |

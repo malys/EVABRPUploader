@@ -1,7 +1,9 @@
 package com.mg4.abrptelemetry;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -79,12 +81,25 @@ public class OtaUpdaterTest {
 
     @Test
     public void unstableBuildNumbersCompareAsVersions() {
-        // The CI tags unstable builds "v<base>.<run>" precisely so this works. A tag like
-        // "unstable-43" parses to 0 and would never look newer than an installed build,
+        // The CI names unstable assets "<app>-unstable-<base>.<run>.apk" precisely so this
+        // works. A name that parses to 0 would never look newer than an installed build,
         // so the channel would silently never update.
         assertTrue(OtaUpdater.isNewer("v1.0.100", "1.0.99-unstable"));
         assertFalse(OtaUpdater.isNewer("v1.0.41", "1.0.42-unstable"));
         assertArrayEquals(new int[]{0}, OtaUpdater.segments("unstable-43"));
+    }
+
+    @Test
+    public void versionIsReadFromTheAssetName() {
+        // The release tag is the constant "unstable", so the asset name carries the build.
+        assertEquals("1.0.42", OtaUpdater.versionFromAssetName("MG4AbrpTelemetry-unstable-1.0.42.apk"));
+        assertEquals("1.0.100", OtaUpdater.versionFromAssetName("MG4AbrpTelemetry-unstable-1.0.100.APK"));
+    }
+
+    @Test
+    public void assetNameWithoutAVersionIsIgnored() {
+        assertNull(OtaUpdater.versionFromAssetName("MG4AbrpTelemetry-unstable.apk"));
+        assertNull(OtaUpdater.versionFromAssetName("unstable"));
     }
 
     @Test
