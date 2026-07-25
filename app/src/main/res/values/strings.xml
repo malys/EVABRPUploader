@@ -13,6 +13,12 @@
     <string name="helper_token">Find your token in the ABRP app: Settings → Connections → Generic (Manual Entry)</string>
     <string name="btn_save">Save</string>
     <string name="btn_test">Test Connection</string>
+    <string name="btn_import">Import file</string>
+
+    <!-- Config file import -->
+    <string name="import_ok">Config imported — press Test to verify</string>
+    <string name="import_err_read">Could not read that file</string>
+    <string name="import_err_empty">No ABRP settings found in that file</string>
 
     <!-- Connection test -->
     <string name="conn_testing">Testing…</string>

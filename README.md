@@ -98,6 +98,9 @@ From there, open your USB stick and tap the APK.
 3. Paste both, press **Test** (read-only — it does not send telemetry), then **Save**.
 4. Turn the switch on. The service restarts with the car from then on.
 
+Typing a long API key and token on the car's on-screen keyboard is painful. Instead you can
+put them in a text file and tap **Import file** — see [Config file](#config-file) below.
+
 ## Configuration
 
 | Setting | Default | Notes |
@@ -110,6 +113,30 @@ From there, open your USB stick and tap the APK.
 Parked and unplugged, the app drops to **one upload every 15 minutes** on its own,
 whatever the setting. A state change — parked, plugged in, unplugged — always uploads
 immediately.
+
+### Config file
+
+To avoid typing on the head unit, put your settings in a plain text file on the USB stick and
+tap **Import file** on the **ABRP** tab. It opens the same file picker you use for the APK; pick
+the file and the app fills in whatever it contains. Nothing is sent — press **Test**, then
+**Save** as usual.
+
+The file is a `key = value` list, one per line. Blank lines and lines starting with `#` are
+ignored, keys are case-insensitive, and any key you leave out keeps its current value:
+
+```
+# ABRP Uploader config
+api_key = your-abrp-api-key
+token   = your-abrp-user-token
+
+# optional — the cadence controls, same values as the UI
+interval_sec    = 60      # snapped to 15 / 30 / 60 / 120 / 300
+boost_low_soc   = true
+low_soc_percent = 20      # clamped to 1–99
+```
+
+Only `api_key` and `token` are usually needed. The file is read once on import and not kept —
+your credentials live only in the app's encrypted store afterwards.
 
 ### Power
 

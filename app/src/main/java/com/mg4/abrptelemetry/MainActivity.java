@@ -13,6 +13,8 @@ import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -63,6 +65,16 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences prefs;
     /** Credentials only — encrypted at rest, see {@link SecurePrefs}. */
     private SharedPreferences securePrefs;
+
+    /**
+     * Picks an ABRP config text file. ACTION_OPEN_DOCUMENT via SAF needs no storage
+     * permission — the user grants access to the one file they tap, the same way they reach
+     * the APK on the USB stick through the Files app.
+     */
+    private final ActivityResultLauncher<String[]> configPicker =
+            registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+                if (uri != null) importConfig(uri);
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,6 +138,9 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.save_button).setOnClickListener(v -> saveCredentials());
         testButton.setOnClickListener(v -> testConnection());
+        // Any MIME: the MG4 Files app tags .txt inconsistently, so filtering by type hides
+        // the very file the user is trying to pick. They select it by name instead.
+        findViewById(R.id.import_button).setOnClickListener(v -> configPicker.launch(new String[]{"*/*"}));
 
         serviceSwitch.setOnCheckedChangeListener((btn, checked) -> {
             if (checked) {
@@ -189,6 +204,69 @@ public class MainActivity extends AppCompatActivity {
         if (serviceSwitch.isChecked()) {
             startForegroundService(new Intent(this, AbrpUploadService.class));
         }
+        refreshStatus();
+    }
+
+    // ---------- Config import ----------
+
+    /**
+     * Reads an ABRP config text file and applies whatever it sets. Credentials go straight to
+     * the encrypted store; cadence keys go to the plain prefs the same way the manual controls
+     * write them. Absent keys are left untouched, so a file carrying only the credentials does
+     * not wipe a cadence the user already tuned.
+     */
+    private void importConfig(android.net.Uri uri) {
+        String text;
+        try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) throw new java.io.IOException("no stream");
+            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+            byte[] chunk = new byte[4096];
+            int n;
+            // Cap the read so a wrong file (a huge binary picked by mistake) can't be slurped
+            // whole into memory before we find out it isn't a config.
+            while ((n = in.read(chunk)) != -1 && buf.size() < 64 * 1024) buf.write(chunk, 0, n);
+            text = buf.toString(java.nio.charset.StandardCharsets.UTF_8.name());
+        } catch (Exception e) {
+            setConnectionStatus(COLOR_ERROR, getString(R.string.import_err_read));
+            return;
+        }
+
+        ConfigImport config = ConfigImport.parse(text);
+        if (config.isEmpty()) {
+            setConnectionStatus(COLOR_ERROR, getString(R.string.import_err_empty));
+            return;
+        }
+
+        if (config.apiKey != null) {
+            securePrefs.edit().putString(SecurePrefs.KEY_API_KEY, config.apiKey).apply();
+        }
+        if (config.token != null) {
+            securePrefs.edit().putString(SecurePrefs.KEY_TOKEN, config.token).apply();
+        }
+        SharedPreferences.Editor edit = prefs.edit();
+        if (config.intervalSec != null) {
+            edit.putInt(UploadSettings.KEY_INTERVAL_SEC, config.intervalSec);
+        }
+        if (config.boostLowSoc != null) {
+            edit.putBoolean(UploadSettings.KEY_BOOST_LOW_SOC, config.boostLowSoc);
+        }
+        if (config.lowSocPercent != null) {
+            edit.putInt(UploadSettings.KEY_LOW_SOC_PERCENT, config.lowSocPercent);
+        }
+        edit.apply();
+
+        // Re-read every control from prefs so the screen shows what was imported.
+        apiKeyInput.setText(securePrefs.getString(SecurePrefs.KEY_API_KEY, ""));
+        tokenInput.setText(securePrefs.getString(SecurePrefs.KEY_TOKEN, ""));
+        apiKeyLayout.setError(null);
+        tokenLayout.setError(null);
+        bindCadenceControls();
+        AbrpUploadService.reloadSettings();
+
+        if (serviceSwitch.isChecked()) {
+            startForegroundService(new Intent(this, AbrpUploadService.class));
+        }
+        setConnectionStatus(COLOR_OK, getString(R.string.import_ok));
         refreshStatus();
     }
 
