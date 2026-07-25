@@ -180,7 +180,7 @@ run = '''
 set -e
 # swiftshader_indirect : le GPU hôte n'est pas exposé de façon fiable sous WSL2.
 "$ANDROID_HOME/emulator/emulator" -avd "$EMU_CAR_AVD" \
-  -gpu swiftshader_indirect -no-snapshot-save -no-boot-anim &
+  -gpu host -no-snapshot-save -no-boot-anim &
 "$ANDROID_HOME/platform-tools/adb" wait-for-device
 echo "Émulateur voiture prêt."
 '''
@@ -190,7 +190,7 @@ description = "Lance l'émulateur écran MG4 (API 28, 1920x1080 @ 160dpi — pas
 run = '''
 set -e
 "$ANDROID_HOME/emulator/emulator" -avd "$EMU_SCREEN_AVD" \
-  -gpu swiftshader_indirect -no-snapshot-save -no-boot-anim &
+  -gpu host -no-snapshot-save -no-boot-anim &
 "$ANDROID_HOME/platform-tools/adb" wait-for-device
 echo "Émulateur écran prêt."
 '''
