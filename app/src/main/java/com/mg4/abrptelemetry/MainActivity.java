@@ -67,9 +67,9 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences securePrefs;
 
     /**
-     * Picks an ABRP config text file. ACTION_OPEN_DOCUMENT via SAF needs no storage
-     * permission — the user grants access to the one file they tap, the same way they reach
-     * the APK on the USB stick through the Files app.
+     * Picks an ABRP config text file. Only reachable on devices that ship a document picker —
+     * the MG4 head unit does not, which is why {@link #startConfigImport()} scans the
+     * app-specific folders first and only falls back to this.
      */
     private final ActivityResultLauncher<String[]> configPicker =
             registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
@@ -138,9 +138,7 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.save_button).setOnClickListener(v -> saveCredentials());
         testButton.setOnClickListener(v -> testConnection());
-        // Any MIME: the MG4 Files app tags .txt inconsistently, so filtering by type hides
-        // the very file the user is trying to pick. They select it by name instead.
-        findViewById(R.id.import_button).setOnClickListener(v -> configPicker.launch(new String[]{"*/*"}));
+        findViewById(R.id.import_button).setOnClickListener(v -> startConfigImport());
 
         serviceSwitch.setOnCheckedChangeListener((btn, checked) -> {
             if (checked) {
@@ -210,27 +208,101 @@ public class MainActivity extends AppCompatActivity {
     // ---------- Config import ----------
 
     /**
-     * Reads an ABRP config text file and applies whatever it sets. Credentials go straight to
-     * the encrypted store; cadence keys go to the plain prefs the same way the manual controls
-     * write them. Absent keys are left untouched, so a file carrying only the credentials does
-     * not wipe a cadence the user already tuned.
+     * The MG4 head unit ships no document picker — SAF answers "FileManagement is no supported
+     * on this device" — so the file is found by scanning instead. getExternalFilesDirs() returns
+     * this app's own folder on internal storage and on every mounted volume including a USB
+     * stick, and those need no storage permission at any API level. The picker stays as the
+     * fallback for phones and tablets, where the user may keep the file anywhere.
      */
+    private void startConfigImport() {
+        java.io.File found = findConfigFile();
+        if (found != null) {
+            importConfig(found);
+            return;
+        }
+        try {
+            // Any MIME: the MG4 Files app tags .txt inconsistently, so filtering by type hides
+            // the very file the user is trying to pick. They select it by name instead.
+            configPicker.launch(new String[]{"*/*"});
+        } catch (android.content.ActivityNotFoundException e) {
+            setConnectionStatus(COLOR_ERROR, getString(R.string.import_err_not_found, configDirHint()));
+        }
+    }
+
+    /**
+     * First readable file in an app-specific folder that parses as a config. Names are not
+     * filtered: the user copies one file to the folder, whatever they called it.
+     */
+    private java.io.File findConfigFile() {
+        for (java.io.File dir : getExternalFilesDirs(null)) {
+            if (dir == null) continue;
+            java.io.File[] files = dir.listFiles();
+            if (files == null) continue;
+            for (java.io.File f : files) {
+                if (f.isFile() && f.canRead() && f.length() > 0 && f.length() <= 64 * 1024
+                        && !ConfigImport.parse(readText(f)).isEmpty()) {
+                    return f;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** File text, or "" when unreadable — callers treat that as "not a config". */
+    private String readText(java.io.File file) {
+        try (java.io.InputStream in = new java.io.FileInputStream(file)) {
+            return readCapped(in);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /**
+     * Cap the read so a wrong file (a huge binary picked by mistake) can't be slurped whole
+     * into memory before we find out it isn't a config.
+     */
+    private String readCapped(java.io.InputStream in) throws java.io.IOException {
+        java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+        byte[] chunk = new byte[4096];
+        int n;
+        while ((n = in.read(chunk)) != -1 && buf.size() < 64 * 1024) buf.write(chunk, 0, n);
+        return buf.toString(java.nio.charset.StandardCharsets.UTF_8.name());
+    }
+
+    /** Where the user should drop the file, shown when nothing was found. */
+    private String configDirHint() {
+        java.io.File[] dirs = getExternalFilesDirs(null);
+        return dirs.length > 0 && dirs[0] != null ? dirs[0].getAbsolutePath() : "";
+    }
+
+    private void importConfig(java.io.File file) {
+        String text = readText(file);
+        if (text.isEmpty()) {
+            setConnectionStatus(COLOR_ERROR, getString(R.string.import_err_read));
+            return;
+        }
+        applyConfig(text);
+    }
+
     private void importConfig(android.net.Uri uri) {
         String text;
         try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
             if (in == null) throw new java.io.IOException("no stream");
-            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
-            byte[] chunk = new byte[4096];
-            int n;
-            // Cap the read so a wrong file (a huge binary picked by mistake) can't be slurped
-            // whole into memory before we find out it isn't a config.
-            while ((n = in.read(chunk)) != -1 && buf.size() < 64 * 1024) buf.write(chunk, 0, n);
-            text = buf.toString(java.nio.charset.StandardCharsets.UTF_8.name());
+            text = readCapped(in);
         } catch (Exception e) {
             setConnectionStatus(COLOR_ERROR, getString(R.string.import_err_read));
             return;
         }
+        applyConfig(text);
+    }
 
+    /**
+     * Applies whatever the config text sets. Credentials go straight to the encrypted store;
+     * cadence keys go to the plain prefs the same way the manual controls write them. Absent
+     * keys are left untouched, so a file carrying only the credentials does not wipe a cadence
+     * the user already tuned.
+     */
+    private void applyConfig(String text) {
         ConfigImport config = ConfigImport.parse(text);
         if (config.isEmpty()) {
             setConnectionStatus(COLOR_ERROR, getString(R.string.import_err_empty));

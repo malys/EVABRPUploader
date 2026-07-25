@@ -116,10 +116,20 @@ immediately.
 
 ### Config file
 
-To avoid typing on the head unit, put your settings in a plain text file on the USB stick and
-tap **Import file** on the **ABRP** tab. It opens the same file picker you use for the APK; pick
-the file and the app fills in whatever it contains. Nothing is sent — press **Test**, then
-**Save** as usual.
+To avoid typing on the head unit, put your settings in a plain text file and tap **Import file**
+on the **ABRP** tab. The app fills in whatever the file contains. Nothing is sent — press
+**Test**, then **Save** as usual.
+
+The head unit has no file picker, so the file is not chosen by hand: copy it from a PC into
+
+```
+Android/data/com.mg4.abrptelemetry/files/
+```
+
+on the USB stick (or on the head unit's internal storage), then tap **Import file**. The app
+scans that folder on every mounted volume and takes the first file that parses — the name does
+not matter. If nothing is found it shows the exact path to copy to. On a phone or tablet, where
+a document picker exists, the button falls back to letting you pick any file.
 
 The file is a `key = value` list, one per line. Blank lines and lines starting with `#` are
 ignored, keys are case-insensitive, and any key you leave out keeps its current value:

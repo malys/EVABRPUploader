@@ -19,6 +19,7 @@
     <string name="import_ok">Config imported — press Test to verify</string>
     <string name="import_err_read">Could not read that file</string>
     <string name="import_err_empty">No ABRP settings found in that file</string>
+    <string name="import_err_not_found">No config file found. Copy it to %1$s</string>
 
     <!-- Connection test -->
     <string name="conn_testing">Testing…</string>
