@@ -18,6 +18,8 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import com.mg4.hardware.MG4Hardware;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -125,6 +127,13 @@ public class AbrpUploadService extends Service {
         startForeground(NOTIF_ID, buildNotification("Starting…"));
         running = true;
         prefs.edit().putBoolean("service_running", true).apply();
+
+        // Firmware-agnostic vehicle reads (speed, outside temp, park) go through
+        // MG4Hardware, which branches per generation internally and so works on all
+        // supported firmwares (SWI68/69/131/132/133/165). Idempotent. The vendor SOC/range
+        // reads stay on CarPropertyAdapter — MG4Hardware has no EV-battery abstraction and
+        // those IDs are confirmed for SWI68 only (see FIRMWARE.md).
+        MG4Hardware.INSTANCE.init(getApplicationContext());
 
         connectCarAdapter();
         requestLocationUpdates();
@@ -252,9 +261,10 @@ public class AbrpUploadService extends Service {
         // fails, and a null field is omitted from the payload — never sent as 0.
         boolean carUp = carAdapter != null && carAdapter.isConnected();
 
-        Float speedKmh = carUp ? carAdapter.getFloatProperty(
-                CarPropertyAdapter.PROP_VEHICLE_SPEED,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
+        // Speed via MG4Hardware: it reads the standard AAOS property on every generation
+        // and returns km/h (PERF_VEHICLE_SPEED is m/s, and negative in reverse) — the raw
+        // vendor read here would have shipped m/s mislabelled as km/h.
+        Float speedKmh = MG4Hardware.INSTANCE.getVehicleSpeedKmh();
 
         Float socRaw = carUp ? carAdapter.getFloatProperty(
                 CarPropertyAdapter.PROP_EV_BATTERY_PCT,
@@ -265,9 +275,9 @@ public class AbrpUploadService extends Service {
                 CarPropertyAdapter.PROP_EV_RANGE_KM,
                 CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
 
-        Float extTemp = carUp ? carAdapter.getFloatProperty(
-                CarPropertyAdapter.PROP_OUTSIDE_TEMP,
-                CarPropertyAdapter.PROP_AREA_HVAC) : null;
+        // Outside temp via MG4Hardware: standard AAOS ENV_OUTSIDE_TEMPERATURE, valid on
+        // every generation. The old local vendor ID (0x15602511) was SWI68-only.
+        Float extTemp = MG4Hardware.INSTANCE.getOutsideTempCelsius();
 
         // Charge rate comes in mW (signed: +ve charging, -ve driving). ABRP wants kW.
         Float chargeRate = carUp ? carAdapter.getFloatProperty(
@@ -279,12 +289,9 @@ public class AbrpUploadService extends Service {
                 CarPropertyAdapter.PROP_EV_CHARGE_PORT_CONNECTED,
                 CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
 
-        // Free derived signals
-        Integer gear = carUp ? carAdapter.getIntProperty(
-                CarPropertyAdapter.PROP_GEAR_SELECTION,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-        // Unknown gear means unknown parked state — not "not parked".
-        Boolean parked = gear == null ? null : (gear == CarPropertyAdapter.GEAR_PARK);
+        // Park state via MG4Hardware: it resolves gear per generation (VPM / CarStateClient
+        // / VehicleConditionManager depending on firmware). Null means unknown, not "moving".
+        Boolean parked = MG4Hardware.INSTANCE.isVehicleInPark();
 
         // DCFC heuristic: charging at AC speeds (3-22 kW) is type-2; above ~25 kW
         // it can only be DC fast. Undecidable if either input is missing.

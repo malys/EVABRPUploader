@@ -27,13 +27,20 @@ unit and talks to ABRP directly.
 
 ## What it does
 
-| Signal | Source |
-|---|---|
-| State of charge, range | `CarPropertyManager` (EV battery properties) |
-| Speed, gear, parked state | Vehicle speed / gear selection |
-| Charging, DC fast charging | Charge port state + charge rate heuristic |
-| Outside and cabin temperature | HVAC properties |
-| Position, elevation, heading | GPS |
+| Signal | Source | Firmwares |
+|---|---|---|
+| State of charge, range | SWI68 vendor EV properties (`CarPropertyAdapter`) | SWI68 only |
+| Speed, parked state | `MG4Hardware` (per-generation) | all supported |
+| Outside temperature | `MG4Hardware` (standard AAOS) | all supported |
+| Charging, DC fast charging | Charge port state + charge rate heuristic | where the VHAL implements them |
+| Cabin temperature | HVAC property | where the VHAL implements it |
+| Position, elevation, heading | GPS | — |
+
+Firmware-agnostic signals go through **MG4Hardware**, which detects the generation
+(SWI68/69/131/132/133/165) and picks the right underlying API. SOC and range are the
+exception: MG4Hardware exposes no EV-battery abstraction, so they still use vendor IDs
+reverse-engineered from SWI68 and are read-confirmed on that generation only — see
+[`FIRMWARE.md`](FIRMWARE.md).
 
 A property the car will not give up is **omitted** from the payload, never sent as zero —
 so ABRP is never told the battery is empty because a read failed.

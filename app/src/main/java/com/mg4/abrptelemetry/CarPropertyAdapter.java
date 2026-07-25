@@ -14,18 +14,10 @@ import java.lang.reflect.Method;
  * Targets AAOS 9 (API 28) where android.car is a platform library not in the
  * compile-time SDK — direct imports are unavailable, so all access is via reflection.
  *
- * Usage:
- * <pre>
- *     CarPropertyAdapter adapter = new CarPropertyAdapter(listener);
- *     adapter.connect(context);
- *
- *     // After onConnected():
- *     float speed = adapter.getFloatProperty(VehiclePropertyIds.PERF_VEHICLE_SPEED, 0);
- * </pre>
- *
- * Property constants confirmed on this vehicle:
- *   OUTSIDE_TEMP           = 0x15602511, area 117  — ambient °C (matches HMI display)
- *   PERF_VEHICLE_SPEED     = 0x11600207, area 0    — speed m/s (standard AAOS)
+ * Scope: this adapter only carries the reads MG4Hardware does not abstract — the
+ * SWI68 vendor EV cluster (SOC, range) and the standard-AAOS charge / cabin-temp
+ * properties. Firmware-agnostic signals (speed, outside temp, park) go through
+ * MG4Hardware instead, so they work across every supported generation.
  */
 public class CarPropertyAdapter {
 
@@ -47,9 +39,6 @@ public class CarPropertyAdapter {
     // may return nothing — which is handled safely (the getters return null and the field
     // is omitted, see T-913), but SOC and range would then be silently absent. Re-confirm
     // the vendor IDs on any other generation with VhalProbe (debug builds).
-    public static final int PROP_OUTSIDE_TEMP   = 0x15602511; // float °C, area 117
-    public static final int PROP_VEHICLE_SPEED  = 0x11600207; // float km/h, area 0
-    public static final int PROP_GEAR_SELECTION = 0x11400400; // int (VehicleGear), area 0
     // Vendor EV cluster — matched against the SAIC stack's BatteryPercent / CurrentRange:
     public static final int PROP_EV_BATTERY_PCT = 0x2160F404; // float % (e.g. 90.5)
     public static final int PROP_EV_RANGE_KM    = 0x2140F41C; // int km
@@ -63,13 +52,6 @@ public class CarPropertyAdapter {
     public static final int PROP_CABIN_TEMP     = 0x15600903; // float °C, area 117
     public static final int PROP_AREA_GLOBAL    = 0;
     public static final int PROP_AREA_HVAC      = 117;
-
-    // VehicleGear bitfield values (standard AAOS) — these are flags, not ordinals.
-    public static final int GEAR_UNKNOWN  = 0x0000;
-    public static final int GEAR_NEUTRAL  = 0x0001;
-    public static final int GEAR_REVERSE  = 0x0002;
-    public static final int GEAR_PARK     = 0x0004;
-    public static final int GEAR_DRIVE    = 0x0008;
 
     private final Listener listener;
     private Context        appContext;

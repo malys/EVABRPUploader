@@ -40,8 +40,14 @@ SAIC SDK under the workspace `apks/` — which is decompiled from this same ROM.
 
 These IDs are therefore confirmed for **SWI68 (R69) only**. MG4 ships other
 generations (SWI69/131/132/133/165) and the VHAL binary lists many SAIC
-platforms (`eh32`, `as33`, `ec32`, `ip42`, …); the IDs may differ there. This
-app does not branch per generation — see `CarPropertyAdapter` and `AGENTS.md`.
+platforms (`eh32`, `as33`, `ec32`, `ip42`, …); the IDs may differ there.
+
+Only SOC and range still ride these vendor IDs. Speed, outside temperature and
+park state are read through `MG4Hardware`, which branches per generation
+internally and so covers all six firmwares — `CarPropertyAdapter` carries just
+the SWI68 EV cluster plus the standard-AAOS charge / cabin-temp reads. MG4Hardware
+has no EV-battery abstraction for any generation, which is why SOC/range cannot yet
+follow the same path. See `AGENTS.md` for the full per-signal split.
 
 ## Emulator fidelity
 

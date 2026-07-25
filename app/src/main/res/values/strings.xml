@@ -1,7 +1,10 @@
 <resources>
-    <string name="app_name">MG4 ABRP Telemetry</string>
+    <string name="app_name">ABRP Uploader</string>
 
     <!-- Main screen -->
+    <string name="tab_abrp">ABRP</string>
+    <string name="tab_service">Upload Service</string>
+    <string name="tab_log">Log</string>
     <string name="card_config">Configuration</string>
     <string name="hint_api_key">ABRP API Key</string>
     <string name="helper_api_key">Developer key from api.iternio.com — register your app to get one</string>

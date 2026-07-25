@@ -46,6 +46,9 @@ public class MainActivity extends AppCompatActivity {
     private TextInputEditText lowSocInput;
     private TextInputLayout lowSocLayout;
     private TextView callLogText;
+    private View abrpPane;
+    private View servicePane;
+    private View logPane;
 
     /** Refreshes state + call log while the screen is visible. */
     private final android.os.Handler uiHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -84,6 +87,18 @@ public class MainActivity extends AppCompatActivity {
         lowSocInput = findViewById(R.id.low_soc_input);
         lowSocLayout = findViewById(R.id.low_soc_layout);
         callLogText = findViewById(R.id.call_log_text);
+        abrpPane = findViewById(R.id.abrpPane);
+        servicePane = findViewById(R.id.servicePane);
+        logPane = findViewById(R.id.logPane);
+
+        com.google.android.material.button.MaterialButtonToggleGroup tabGroup = findViewById(R.id.tabGroup);
+        tabGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            abrpPane.setVisibility(checkedId == R.id.tabAbrp ? View.VISIBLE : View.GONE);
+            servicePane.setVisibility(checkedId == R.id.tabService ? View.VISIBLE : View.GONE);
+            logPane.setVisibility(checkedId == R.id.tabLog ? View.VISIBLE : View.GONE);
+        });
+        tabGroup.check(R.id.tabAbrp);
 
         bindCadenceControls();
 
