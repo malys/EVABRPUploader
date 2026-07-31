@@ -29,9 +29,12 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int LOCATION_PERMISSION_REQUEST = 100;
 
-    private static final int COLOR_OK      = 0xFF4CAF50; // green
-    private static final int COLOR_ERROR   = 0xFFF44336; // red
-    private static final int COLOR_PENDING = 0xFF9E9E9E; // grey
+    // Status colours come from the palette, not from the Material swatches: #4CAF50 and
+    // #F44336 sit around 4:1 on this background, which disappears behind a sunlit
+    // reflection. The palette entries are the lightened variants (7:1 and above).
+    private static final int COLOR_OK      = 0xFF8FE6A6;
+    private static final int COLOR_ERROR   = 0xFFFF9A9A;
+    private static final int COLOR_PENDING = 0xFFC6CFD8;
 
     private TextInputLayout   apiKeyLayout;
     private TextInputEditText apiKeyInput;
@@ -523,7 +526,7 @@ public class MainActivity extends AppCompatActivity {
             case STOPPED:
             default:
                 statusText.setText(R.string.state_stopped);
-                statusText.setTextColor(android.graphics.Color.GRAY);
+                statusText.setTextColor(COLOR_PENDING);
                 break;
         }
     }

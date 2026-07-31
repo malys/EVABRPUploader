@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="touch_target">64dp</dimen>
+    <!-- Écran de véhicule : lu à ~70 cm, parfois en plein soleil, touché par des doigts
+         qui visent mal. Tout est plus grand que sur un téléphone tenu en main. -->
+    <dimen name="touch_target">72dp</dimen>
     <dimen name="spacing_xs">4dp</dimen>
     <dimen name="spacing_sm">8dp</dimen>
     <dimen name="spacing_md">16dp</dimen>
     <dimen name="spacing_lg">24dp</dimen>
 
-    <dimen name="text_title">24sp</dimen>
-    <dimen name="text_body">18sp</dimen>
-    <dimen name="text_secondary">15sp</dimen>
-    <dimen name="text_label">14sp</dimen>
+    <!-- Le plancher est text_secondary, qui doit rester lisible en plein jour : en dessous
+         de 16sp le contraste ne suffit plus à compenser le reflet. -->
+    <dimen name="text_title">26sp</dimen>
+    <dimen name="text_body">20sp</dimen>
+    <dimen name="text_secondary">17sp</dimen>
+    <dimen name="text_label">16sp</dimen>
 </resources>
