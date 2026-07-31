@@ -1,4 +1,4 @@
-# Allowed permissions for ABRP_Uploader.
+# Allowed permissions for MG4ABRPUploader.
 # Any uses-permission in a manifest NOT listed here FAILS the CI.
 # Why: the app runs on a moving vehicle and uploads to a third party — any new
 # permission (especially network or vehicle-read) must be reviewed and added
