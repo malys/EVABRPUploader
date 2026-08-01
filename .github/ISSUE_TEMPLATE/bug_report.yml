@@ -1,61 +1,142 @@
-name: Bug report
-description: Something misbehaves on the car
-labels: ["bug"]
+name: 🐛 Bug Report
+description: Report a bug or issue you've encountered
+title: "[BUG] "
+labels: [bug, needs-review]
+assignees: []
+
 body:
   - type: markdown
     attributes:
       value: |
-        Please do not report security issues here — see
-        [SECURITY.md](../blob/main/SECURITY.md) for private reporting.
-  - type: textarea
-    id: what
+        # Bug Report
+
+        Thank you for helping improve this project! Please provide as much detail as possible.
+
+        **⚠️ REAL-TIME DATA:** If this bug affects ABRP live metric upload, vehicle telemetry, or safety-critical data transmission, mark it as critical.
+
+  - type: checkboxes
+    id: checks
     attributes:
-      label: What happened
-      description: What you saw, and what you expected instead.
-    validations:
-      required: true
-  - type: dropdown
-    id: channel
-    attributes:
-      label: Channel
-      options: ["Stable", "Unstable", "Built from source"]
-    validations:
-      required: true
+      label: "Pre-submission checks"
+      description: "Ensure you've done these before submitting"
+      options:
+        - label: I've searched existing issues and found no duplicate
+          required: true
+        - label: I'm using the latest version
+          required: true
+        - label: I've tested this on the actual vehicle (or emulator)
+          required: false
+        - label: This bug affects vehicle data transmission (ABRP, vehicle metrics)
+          required: false
+
   - type: input
-    id: version
+    id: title
     attributes:
-      label: App version
-      description: Shown on the GitHub release you installed, e.g. v1.2.0 or unstable-42.
+      label: "Bug Summary"
+      description: "One-line summary of the bug"
+      placeholder: "ABRP upload fails silently when network reconnects"
     validations:
       required: true
-  - type: input
-    id: firmware
-    attributes:
-      label: Car firmware
-      description: "MG4 infotainment version, e.g. SWI133. Settings → About."
-  - type: dropdown
-    id: moving
-    attributes:
-      label: Was the car moving?
-      options: ["Parked", "Driving", "Charging", "Not sure"]
+
   - type: textarea
-    id: state
+    id: description
     attributes:
-      label: Service state and recent uploads
-      description: >
-        From the app's main screen: the service state, and the last few lines of the
-        upload list (status codes and reasons).
-      render: text
+      label: "Description"
+      description: |
+        Detailed description of the bug. Include:
+        - What you expected to happen
+        - What actually happened
+        - Why this is a problem
+      placeholder: |
+        Expected: ABRP metrics resume uploading after network reconnection
+        Actual: Metrics stop uploading; app reports "connected" but data never reaches ABRP
+        Impact: Users cannot monitor real-time vehicle metrics on ABRP; trip data is lost
+      rows: 6
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Exact steps to reproduce the bug"
+      placeholder: |
+        1. Start MG4ABRPUploader
+        2. Verify ABRP connection (should show green status)
+        3. Disconnect WiFi/4G
+        4. Wait 30 seconds
+        5. Reconnect to network
+        6. Observe that metrics no longer upload
+      rows: 5
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: "Environment"
+      description: "Device and software details"
+      placeholder: |
+        - Vehicle: MG4 EV
+        - Firmware: SWI133
+        - Android Automotive: v9
+        - App Version: 0.2.1
+        - Build: online
+        - Network: WiFi / 4G LTE
+      rows: 4
+    validations:
+      required: true
+
   - type: textarea
     id: logs
     attributes:
-      label: Logs
-      description: "`adb logcat -s AbrpUploadService:V CarPropertyAdapter:V` if you can get them."
-      render: text
+      label: "Logs or Screenshots"
+      description: |
+        Attach:
+        - Logcat output: `adb logcat -s AbrpUploadService:V CarPropertyAdapter:V`
+        - ABRP response logs
+        - Screenshots showing the issue
+      placeholder: "Paste logcat or error output here"
+      rows: 8
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: "Severity"
+      description: "How critical is this bug?"
+      options:
+        - "Critical (data loss / upload failure)"
+        - "High (feature broken / incomplete metrics)"
+        - "Medium (workaround available / intermittent)"
+        - "Low (cosmetic / minor)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: data_impact
+    attributes:
+      label: "Data Impact"
+      description: "Does this affect vehicle data transmission?"
+      options:
+        - "No — UI/UX only"
+        - "Yes — ABRP upload / vehicle metrics affected"
+        - "Yes — Device state (battery, SOC, energy)"
+        - "Unknown — Unclear impact"
+    validations:
+      required: true
+
   - type: checkboxes
     id: creds
     attributes:
-      label: Confirmation
+      label: "Confirmation"
       options:
         - label: I have removed my ABRP API key and token from anything I pasted above.
+          required: true
+
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: "Consent"
+      options:
+        - label: I understand this project is not affiliated with SAIC/MG Motor or ABRP and carries no warranty (see DISCLAIMER.md)
           required: true
