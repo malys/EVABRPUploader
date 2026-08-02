@@ -101,6 +101,9 @@
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="16dp"
                             android:hint="@string/hint_api_key"
+                            app:endIconContentDescription="@string/desc_toggle_api_key"
+                            app:endIconMode="password_toggle"
+                            app:endIconMinSize="@dimen/touch_target"
                             app:helperText="@string/helper_api_key"
                             app:helperTextTextAppearance="@style/Text.MG4.Secondary">
 
@@ -108,7 +111,7 @@
                                 android:id="@+id/api_key_input"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:inputType="text"
+                                android:inputType="textPassword"
                                 android:singleLine="true"
                                 android:textSize="@dimen/text_body" />
 
@@ -120,6 +123,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:hint="@string/hint_token"
+                            app:endIconContentDescription="@string/desc_toggle_token"
+                            app:endIconMode="password_toggle"
+                            app:endIconMinSize="@dimen/touch_target"
                             app:helperText="@string/helper_token"
                             app:helperTextTextAppearance="@style/Text.MG4.Secondary">
 
@@ -127,7 +133,7 @@
                                 android:id="@+id/token_input"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:inputType="text"
+                                android:inputType="textPassword"
                                 android:singleLine="true"
                                 android:textSize="@dimen/text_body" />
 

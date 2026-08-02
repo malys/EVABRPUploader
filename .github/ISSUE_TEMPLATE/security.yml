@@ -1,0 +1,109 @@
+name: 🔐 Security Vulnerability
+description: Report a security vulnerability (confidential)
+title: "[SECURITY] "
+labels: [security, confidential]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # Security Vulnerability Report
+
+        **⚠️ CONFIDENTIAL:** Do not disclose vulnerability details publicly.
+
+        Please report security issues via private GitHub Security Advisory instead:
+        1. Click "Report a vulnerability" at `/security/advisories/new`
+        2. Or email: [maintainer security contact]
+        3. Do **not** post details in public issues
+
+        This template is for urgent in-scope vulnerabilities only.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Security Classification"
+      description: "Select the vulnerability type"
+      options:
+        - label: "Prompt injection / malicious input not validated"
+        - label: "ABRP API credentials exposed or logged"
+        - label: "HTTPS downgrade / MITM vulnerability on upload"
+        - label: "Redirect chain validation (host allowlist bypass)"
+        - label: "User vehicle data transmitted without consent"
+        - label: "VIN or identifying information leaked to ABRP"
+        - label: "Network authentication / permission bypass"
+        - label: "Code execution vulnerability"
+        - label: "Privacy leak (telemetry data exfiltration)"
+        - label: "Battery drain exploitation (upload loop)"
+        - label: "Other security issue affecting data privacy"
+    validations:
+      required: true
+
+  - type: input
+    id: title
+    attributes:
+      label: "Vulnerability Title"
+      description: "Concise title (do not include exploit details)"
+      placeholder: "ABRP API credentials logged in plaintext"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Vulnerability Description"
+      description: |
+        High-level description (no exploit steps or proof-of-concept):
+        - What is vulnerable
+        - Why it matters
+        - Impact on data security or privacy
+      placeholder: |
+        API tokens are logged to logcat when debugging is enabled.
+        An attacker with ADB access could extract ABRP credentials.
+        Impact: Unauthorized access to user's ABRP account and vehicle telemetry.
+      rows: 6
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: "Severity (CVSS)"
+      description: "CVSS v3.1 rating"
+      options:
+        - "Critical (9.0–10.0) — Complete credential compromise"
+        - "High (7.0–8.9) — Significant security impact"
+        - "Medium (4.0–6.9) — Moderate risk"
+        - "Low (0.1–3.9) — Minor issue"
+    validations:
+      required: true
+
+  - type: input
+    id: affected
+    attributes:
+      label: "Affected Projects & Versions"
+      description: "Which projects and versions are affected?"
+      placeholder: "MG4ABRPUploader < 0.2.0 (online build only)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: remediation
+    attributes:
+      label: "Suggested Remediation"
+      description: "How should this be fixed?"
+      placeholder: |
+        1. Remove token logging from production builds
+        2. Use ProGuard obfuscation for credential strings
+        3. Implement secure token storage (encrypted SharedPreferences)
+      rows: 5
+
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: "Consent"
+      options:
+        - label: I understand this vulnerability will be handled according to the security policy
+          required: true
+        - label: I consent to coordinated disclosure and a reasonable embargo period
+          required: true
