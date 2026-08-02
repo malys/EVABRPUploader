@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ABRP Uploader</string>
+    <string name="app_name">MG4 ABRP Uploader</string>
 
     <!-- Main screen -->
     <string name="tab_abrp">ABRP</string>
@@ -11,6 +11,8 @@
     <string name="api_key_required">Enter your ABRP API key first</string>
     <string name="hint_token">ABRP User Token</string>
     <string name="helper_token">Find your token in the ABRP app: Settings → Connections → Generic (Manual Entry)</string>
+    <string name="desc_toggle_api_key">Show or hide API key</string>
+    <string name="desc_toggle_token">Show or hide user token</string>
     <string name="btn_save">Save</string>
     <string name="btn_test">Test Connection</string>
     <string name="btn_import">Import file</string>

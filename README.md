@@ -1,4 +1,4 @@
-# MG4 ABRP Telemetry
+# MG4 ABRP Uploader
 
 <p align="center"><img src="docs/logo.svg" width="440" alt="MG4 ABRP Telemetry"></p>
 
@@ -25,8 +25,21 @@ unit and talks to ABRP directly.
 
 ---
 
-## Screenshots
+## Contents
 
+- [Screenshots](#screenshots)
+- [Overview](#overview)
+- [Install](#install)
+- [Configuration](#configuration)
+- [Building](#building)
+- [Project layout](#project-layout)
+- [Project documents](#project-documents)
+- [Security](#security)
+- [Contributing](#contributing)
+- [Legal](#legal)
+- [Credits](#credits)
+
+## Screenshots
 <p align="center">
   <img src="screenshots/mg4ABRP1.png" width="280" alt="MG4 ABRP Telemetry screenshot 1">
   <img src="screenshots/mg4ABRP2.png" width="280" alt="MG4 ABRP Telemetry screenshot 2">
@@ -34,8 +47,7 @@ unit and talks to ABRP directly.
 
 ---
 
-## What it does
-
+## Overview
 | Signal | Source | Firmwares |
 |---|---|---|
 | State of charge, range | SWI68 vendor EV properties (`CarPropertyAdapter`) | SWI68 only |
@@ -58,7 +70,6 @@ so ABRP is never told the battery is empty because a read failed.
 [`SECURITY.md`](SECURITY.md).
 
 ## Install
-
 The MG4 head unit hides Settings and APK install. The known route in:
 The MG4 head unit has no visible way to open Settings or install an APK. The known route
 in (via the on-screen keyboard) is:
@@ -111,7 +122,6 @@ Typing a long API key and token on the car's on-screen keyboard is painful. Inst
 put them in a text file and tap **Import file** — see [Config file](#config-file) below.
 
 ## Configuration
-
 | Setting | Default | Notes |
 |---|---|---|
 | Upload frequency | 60 s | 15 / 30 / 60 / 120 / 300 s. Applies while driving |
@@ -167,7 +177,6 @@ frequency.
 At defaults that is roughly **59 uploads/hour driving** and **3/hour parked**.
 
 ## Building
-
 Requires JDK 17 and the Android SDK. With [mise](https://mise.jdev):
 
 ```bash
@@ -194,7 +203,6 @@ nothing to do with your ABRP API key, which you type into the app itself:
 gitignored, or in GitHub Actions secrets.
 
 ## Project layout
-
 ```
 app/src/main      shared code: service, car adapter, telemetry, UI
 app/src/stable    no-op update hook — the stable channel cannot self-update
@@ -203,14 +211,27 @@ app/src/debug     VHAL probe tools, absent from every release build
 app/src/test      JVM unit tests
 ```
 
-## Contributing
+## Project documents
+| Document | What it covers |
+|---|---|
+| [DESIGN.md](DESIGN.md) | The MG4Suite design system — colour, type, touch targets, icons |
+| [AGENTS.md](AGENTS.md) | Context for AI agents working in this repository |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to build, test and submit a change |
+| [SECURITY.md](SECURITY.md) | Threat model and vulnerability disclosure |
+| [DISCLAIMER.md](DISCLAIMER.md) | Vehicle-safety disclaimer — read before installing |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [LICENSE.md](LICENSE.md) | Licence text |
 
+## Security
+See [SECURITY.md](SECURITY.md) for the threat model and how to report a vulnerability
+privately.
+
+## Contributing
 See [`CONTRIBUTING.md`](CONTRIBUTING.md). Short version: this code runs on a moving
 vehicle, so changes need tests and a clear account of what you verified on a car and what
 you did not.
 
 ## Legal
-
 - [`DISCLAIMER.md`](DISCLAIMER.md) — no warranty, no liability, not affiliated with the
   carmaker or with ABRP.
 - [`LICENSE.md`](LICENSE.md) — unresolved licence status inherited from the fork source.
@@ -218,7 +239,6 @@ you did not.
 - [`SECURITY.md`](SECURITY.md) — how to report a vulnerability privately.
 
 ## Credits
-
 - Original app: **Leon Kernan** — the car-API approach and the first working uploader.
 - ABRP telemetry API: [Iternio](https://documenter.getpostman.com/view/7396339/SWTK5a8w).
 - Sibling project: **MG4Control**, whose security and CI patterns this repo reuses.
