@@ -58,6 +58,11 @@ android {
         unstable {
             dimension "channel"
             applicationIdSuffix ".unstable"
+            // Android uses versionCode, not versionName, to order package updates. Give
+            // every rolling CI build a strictly increasing code so Package Installer does
+            // not treat a newer unstable APK as the same package version.
+            versionCode defaultConfig.versionCode * 100000 +
+                    (project.findProperty('unstableBuild') ?: '0').toString().toInteger()
             // Le numéro de build fait partie du COEUR numérique de la version
             // ("1.0.42-unstable"), pas du suffixe : l'updater compare des segments
             // numériques, donc deux builds unstable doivent différer avant le premier tiret.

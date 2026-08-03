@@ -40,7 +40,7 @@ final class OtaUpdater {
 
     /** Pre-releases live here; the unstable channel tracks them. */
     private static final String RELEASES_API =
-            "https://api.github.com/repos/malys/MG4AbrpTelemetry/releases";
+            "https://api.github.com/repos/malys/MG4AbrpUploader/releases";
 
     /**
      * Hosts an update may come from. The githubusercontent entries are the CDNs GitHub
