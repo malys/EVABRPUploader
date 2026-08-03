@@ -75,8 +75,7 @@ the generation and picks the right underlying API. Fields it covers therefore wo
 supported firmware.
 
 **Reference firmware: `SWI68-29958-1300R69`.** The vendor EV IDs still in
-`CarPropertyAdapter` were reverse-engineered from this exact ROM — the SWI68 "R69"
-distribution, which is also what the workspace `apks/` dump was decompiled from. MG4Hardware
+`CarPropertyAdapter` are supported only on SWI68 firmware. MG4Hardware
 has **no EV-battery abstraction for any generation**, so SOC and range cannot go through it;
 until those vendor IDs are confirmed on the other generations they stay SWI68-only, and on
 another firmware they may silently return nothing (handled safely — the field is omitted, but

@@ -30,8 +30,7 @@ public class CarPropertyAdapter {
 
     // Confirmed property IDs for this vehicle (AAOS 9, SAIC platform).
     //
-    // Provenance: reverse-engineered from the MG4 (eh32) "R69" distribution, firmware
-    // build SWI68-29958-1300R69 — the same ROM the apks/ reference dump was decompiled
+    // Compatibility: confirmed only for firmware build SWI68-29958-1300R69.
     // from. The vendor-space IDs below (0x216xxxxx / 0x214xxxxx) are OEM-specific and only
     // known-valid for this firmware generation (SWI68). MG4 ships several generations
     // (SWI68/69/131/132/133/165) and the sibling MG4Control project branches its vehicle

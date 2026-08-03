@@ -58,7 +58,7 @@ BUILD_TOOLS = "36.0.0"
 #                    Pour l'UI, les layouts et la densité.
 #
 # Rien de tout cela ne remplace un essai sur le véhicule.
-# Densité CONFIRMÉE depuis la ROM (vendor/build.prop : ro.sf.lcd_density=160).
+# Densité cible du projet : 160 dpi.
 # Écran 12,8" 1920x1080. Firmware de référence : SWI68-29958-1300R69.
 
 EMU_CAR_AVD = "mg4abrp-car"

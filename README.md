@@ -60,7 +60,7 @@ unit and talks to ABRP directly.
 Firmware-agnostic signals go through **MG4Hardware**, which detects the generation
 (SWI68/69/131/132/133/165) and picks the right underlying API. SOC and range are the
 exception: MG4Hardware exposes no EV-battery abstraction, so they still use vendor IDs
-reverse-engineered from SWI68 and are read-confirmed on that generation only — see
+confirmed on SWI68 and are read-supported on that generation only — see
 [`FIRMWARE.md`](FIRMWARE.md).
 
 A property the car will not give up is **omitted** from the payload, never sent as zero —
@@ -112,7 +112,7 @@ From there, open your USB stick and tap the APK.
 ### First run
 
 1. Open the app.
-2. The app prefills the open-source telemetry API key published by the
+2. By default, the app prefills the open-source telemetry API key published by the
    [SAIC Python MQTT Gateway](https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway#abrp-api-integration).
    You can replace it with your own key. Get a token from your ABRP account.
 3. Paste the token, press **Test** (read-only — it does not send telemetry), then **Save**.
