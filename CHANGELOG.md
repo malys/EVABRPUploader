@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-08-03
+
+### Changed
+
+- Prefill the ABRP API-key input with the public open-source telemetry key while
+  preserving any custom key already saved by the user.
+
 ## [1.0.0] - 2026-08-02
 
 ### Added

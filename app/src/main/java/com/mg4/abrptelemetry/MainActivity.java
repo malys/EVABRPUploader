@@ -121,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
         // a no-op and does not even contain the updater.
         UpdateHook.checkInBackground(this);
 
-        apiKeyInput.setText(securePrefs.getString(SecurePrefs.KEY_API_KEY, ""));
+        apiKeyInput.setText(savedApiKeyOrDefault());
         tokenInput.setText(securePrefs.getString(SecurePrefs.KEY_TOKEN, ""));
         serviceSwitch.setChecked(prefs.getBoolean("service_enabled", false));
 
@@ -169,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        apiKeyInput.setText(securePrefs.getString(SecurePrefs.KEY_API_KEY, ""));
+        apiKeyInput.setText(savedApiKeyOrDefault());
         tokenInput.setText(securePrefs.getString(SecurePrefs.KEY_TOKEN, ""));
         serviceSwitch.setChecked(prefs.getBoolean("service_enabled", false));
         // Poll state and log only while the screen is up; onPause cancels it.
@@ -177,6 +177,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ---------- Credentials ----------
+
+    /**
+     * The SAIC open-source gateway publishes this shared ABRP key for compatible clients.
+     * A user-supplied key saved in encrypted preferences always takes precedence.
+     */
+    private String savedApiKeyOrDefault() {
+        String savedApiKey = securePrefs.getString(SecurePrefs.KEY_API_KEY, "");
+        return savedApiKey == null || savedApiKey.trim().isEmpty()
+                ? getString(R.string.default_abrp_api_key)
+                : savedApiKey;
+    }
 
     private void saveCredentials() {
         String apiKey = textOf(apiKeyInput);
@@ -331,7 +342,7 @@ public class MainActivity extends AppCompatActivity {
         edit.apply();
 
         // Re-read every control from prefs so the screen shows what was imported.
-        apiKeyInput.setText(securePrefs.getString(SecurePrefs.KEY_API_KEY, ""));
+        apiKeyInput.setText(savedApiKeyOrDefault());
         tokenInput.setText(securePrefs.getString(SecurePrefs.KEY_TOKEN, ""));
         apiKeyLayout.setError(null);
         tokenLayout.setError(null);
