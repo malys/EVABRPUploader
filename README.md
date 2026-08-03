@@ -94,7 +94,7 @@ Two channels. Pick one — they install side by side.
 | **Stable** | No. Contains no updater at all. | You want the car to run what you put on it |
 | **Unstable** | Yes, from GitHub pre-releases | You are testing and want fixes as they land |
 
-Grab the APK from [Releases](../../releases). Stable builds are the tagged ones; unstable builds
+Grab the APK from [Releases](https://github.com/malys/MG4AbrpTelemetry/releases). Stable builds are the tagged ones; unstable builds
 are marked pre-release.
 
 ### Getting the APK onto the car
@@ -112,10 +112,10 @@ From there, open your USB stick and tap the APK.
 ### First run
 
 1. Open the app.
-2. Get an API key from
-   [ABRP's telemetry page](https://abetterrouteplanner.com/home/app/api-keys/telemetry)
-   and a token from your ABRP account.
-3. Paste both, press **Test** (read-only — it does not send telemetry), then **Save**.
+2. The app prefills the open-source telemetry API key published by the
+   [SAIC Python MQTT Gateway](https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway#abrp-api-integration).
+   You can replace it with your own key. Get a token from your ABRP account.
+3. Paste the token, press **Test** (read-only — it does not send telemetry), then **Save**.
 4. Turn the switch on. The service restarts with the car from then on.
 
 Typing a long API key and token on the car's on-screen keyboard is painful. Instead you can
