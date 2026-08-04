@@ -5,11 +5,14 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -21,6 +24,8 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -28,6 +33,7 @@ import com.google.android.material.textfield.TextInputLayout;
 public class MainActivity extends AppCompatActivity {
 
     private static final int LOCATION_PERMISSION_REQUEST = 100;
+    private static final String REPOSITORY_URL = "https://github.com/malys/MG4AbrpUploader";
 
     // Status colours come from the palette, not from the Material swatches: #4CAF50 and
     // #F44336 sit around 4:1 on this background, which disappears behind a sunlit
@@ -114,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
             logPane.setVisibility(checkedId == R.id.tabLog ? View.VISIBLE : View.GONE);
         });
         tabGroup.check(R.id.tabAbrp);
+        findViewById(R.id.about_button).setOnClickListener(v -> showAbout());
 
         bindCadenceControls();
 
@@ -164,6 +171,31 @@ public class MainActivity extends AppCompatActivity {
             }
             refreshStatus();
         });
+    }
+
+    private void showAbout() {
+        String version;
+        try {
+            version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (PackageManager.NameNotFoundException e) {
+            version = getString(R.string.about_version_unknown);
+        }
+        View content = getLayoutInflater().inflate(R.layout.dialog_about, null);
+        content.<TextView>findViewById(R.id.about_version)
+                .setText(getString(R.string.about_version, version));
+        ImageView qr = content.findViewById(R.id.about_qr_code);
+        android.graphics.Bitmap bitmap = QrCode.generate(REPOSITORY_URL, 416);
+        if (bitmap != null) qr.setImageBitmap(bitmap);
+        content.findViewById(R.id.about_repository).setOnClickListener(v ->
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(REPOSITORY_URL))));
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(content)
+                .create();
+        content.<MaterialButton>findViewById(R.id.about_close).setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
     }
 
     @Override

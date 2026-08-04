@@ -1,9 +1,6 @@
 package com.mg4.abrptelemetry;
 
-import android.app.DownloadManager;
 import android.content.Context;
-import android.net.Uri;
-import android.os.Environment;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -11,6 +8,7 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -37,6 +35,7 @@ import java.util.Locale;
 final class OtaUpdater {
 
     private static final String TAG = "OtaUpdater";
+    private static final String CACHE_PREFIX = "MG4AbrpTelemetry-ota-";
 
     /** Pre-releases live here; the unstable channel tracks them. */
     private static final String RELEASES_API =
@@ -59,6 +58,15 @@ final class OtaUpdater {
     private static final int TIMEOUT_MS = 10_000;
 
     private OtaUpdater() { }
+
+    static void purgeCachedApks(Context context) {
+        File[] files = context.getCacheDir().listFiles((dir, name) ->
+                name.startsWith(CACHE_PREFIX) && name.endsWith(".apk"));
+        if (files == null) return;
+        for (File file : files) {
+            if (!file.delete()) Log.w(TAG, "Could not purge cached OTA APK: " + file.getName());
+        }
+    }
 
     /** Result of a check: null when there is nothing newer or the check failed. */
     static final class Update {
@@ -151,6 +159,7 @@ final class OtaUpdater {
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(RELEASES_API).openConnection();
+            conn.setInstanceFollowRedirects(false);
             conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
             conn.setRequestProperty("User-Agent", "MG4AbrpTelemetry-Android");
             conn.setConnectTimeout(TIMEOUT_MS);
@@ -216,7 +225,7 @@ final class OtaUpdater {
     }
 
     /**
-     * Name the downloaded APK gets in public Downloads. The version comes from a remote
+     * Safe diagnostic name for the downloaded APK. The version comes from a remote
      * asset name, so it is reduced to a safe character set before it reaches a path. Callers that
      * look for an already-downloaded update must use this same name.
      */
@@ -228,25 +237,78 @@ final class OtaUpdater {
     }
 
     /**
-     * Queues the download. The URL is re-checked here: a remote URL is never handed to a
-     * system component on the strength of an earlier check alone.
+     * Downloads into private cache. Every redirect URL is validated before it is followed.
      */
-    static void download(Context context, Update update) {
+    static File download(Context context, Update update) {
         if (!isAllowedUrl(update.apkUrl)) {
             Log.w(TAG, "Refusing to download from " + update.apkUrl);
-            return;
+            return null;
         }
-        String fileName = downloadFileName(update.versionName);
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(update.apkUrl))
-                .setTitle("MG4 ABRP Telemetry " + update.versionName)
-                .setNotificationVisibility(
-                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-                .setMimeType("application/vnd.android.package-archive");
+        File target = new File(context.getCacheDir(), CACHE_PREFIX
+                + java.util.UUID.randomUUID() + ".apk");
+        File temporary = null;
+        try {
+            temporary = File.createTempFile(CACHE_PREFIX, ".apk", context.getCacheDir());
+            URL current = new URL(update.apkUrl);
+            for (int redirects = 0; redirects <= 5; redirects++) {
+                if (!isAllowedUrl(current.toString())) return null;
+                HttpURLConnection connection = (HttpURLConnection) current.openConnection();
+                connection.setInstanceFollowRedirects(false);
+                connection.setConnectTimeout(TIMEOUT_MS);
+                connection.setReadTimeout(TIMEOUT_MS);
+                try {
+                    int status = connection.getResponseCode();
+                    if (status >= 300 && status <= 399) {
+                        String location = connection.getHeaderField("Location");
+                        if (location == null) return null;
+                        current = current.toURI().resolve(location).toURL();
+                        if (!isAllowedUrl(current.toString())) return null;
+                        continue;
+                    }
+                    if (status != HttpURLConnection.HTTP_OK) return null;
+                    try (FileOutputStream output = new FileOutputStream(temporary)) {
+                        try (java.io.InputStream input = connection.getInputStream()) {
+                            byte[] buffer = new byte[32 * 1024];
+                            int count;
+                            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                        }
+                        output.getFD().sync();
+                    }
+                    if (!temporary.renameTo(target)) return null;
+                    return target;
+                } finally {
+                    connection.disconnect();
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Update download failed", e);
+        } finally {
+            if (temporary != null && temporary.exists()) temporary.delete();
+        }
+        return null;
+    }
 
-        DownloadManager dm = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
-        dm.enqueue(request);
-        Log.i(TAG, "Update queued: " + fileName);
+    static boolean install(Context context, File apk) {
+        if (!signatureMatchesRunningApp(context, apk)) return false;
+        try {
+            Process process = new ProcessBuilder("/system/bin/pm", "install", "-r",
+                    apk.getAbsolutePath()).redirectErrorStream(true).start();
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) output.append(line).append('\n');
+            }
+            int exitCode = process.waitFor();
+            return installSucceeded(exitCode, output.toString());
+        } catch (Exception e) {
+            Log.w(TAG, "Update install failed", e);
+            return false;
+        }
+    }
+
+    static boolean installSucceeded(int exitCode, String output) {
+        return exitCode == 0 && output.contains("Success");
     }
 
     /**

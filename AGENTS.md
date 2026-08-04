@@ -52,7 +52,7 @@ anything inside the service effectively cannot be tested without a car.
 |---|---|---|
 | `main` | everything shared | all builds |
 | `stable` | `UpdateHook` no-op | stable channel |
-| `unstable` | `OtaUpdater`, `ApkSignature`, `UpdateHook` | unstable channel |
+| `unstable` | automatic private-cache OTA (`OtaUpdater`, `ApkSignature`, `UpdateHook`) | unstable channel |
 | `debug` | `VhalProbe` — enumerates the whole VHAL | debug builds only |
 | `testUnstable` | OTA policy tests | test only |
 

@@ -74,4 +74,14 @@
     <string name="notif_channel_desc">Shows vehicle telemetry upload status</string>
     <string name="notif_title">ABRP Uploader</string>
     <string name="notif_action_stop">Stop</string>
+    <string name="about_action">About</string>
+    <string name="about_title">About MG4 ABRP Uploader</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_attribution">Maintained by malys\nFork of Leon Kernan / ABRP_Uploader</string>
+    <string name="about_repository">github.com/malys/MG4AbrpUploader</string>
+    <string name="about_made_with_love">Made with ❤ by malys</string>
+    <string name="about_logo_description">MG4 ABRP Uploader logo</string>
+    <string name="about_qr_description">QR code for the project repository</string>
+    <string name="about_version_unknown">unknown</string>
+    <string name="about_close">Close</string>
 </resources>

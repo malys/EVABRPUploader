@@ -110,4 +110,11 @@ public class OtaUpdaterTest {
         // A non-numeric segment is 0, not dropped.
         assertArrayEquals(new int[]{1, 0, 5}, OtaUpdater.segments("1.x.5"));
     }
+
+    @Test
+    public void pmInstallRequiresBothSuccessTextAndZeroExit() {
+        assertTrue(OtaUpdater.installSucceeded(0, "Success\n"));
+        assertFalse(OtaUpdater.installSucceeded(1, "Success\n"));
+        assertFalse(OtaUpdater.installSucceeded(0, "Failure [INSTALL_FAILED]"));
+    }
 }

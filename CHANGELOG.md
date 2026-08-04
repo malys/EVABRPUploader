@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-08-04
+
+### Added
+
+- Add an in-app About surface with project information and a repository QR code.
+
+### Security
+
+- Keep unstable OTA downloads in private cache, validate every redirect, verify the APK
+  signing certificate, and require an explicit successful `pm install` result.
+- Remove the public-download update path and its storage permission exposure.
+
 ## [1.0.1] - 2026-08-03
 
 ### Changed

@@ -52,6 +52,18 @@
                 android:layout_height="wrap_content"
                 android:text="@string/tab_log" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/about_button"
+            style="@style/Widget.MG4.Button.Outlined"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/about_action" />
     </LinearLayout>
 
     <FrameLayout
