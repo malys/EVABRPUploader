@@ -2,6 +2,9 @@
 
 Context for AI agents and new contributors working in this repository.
 
+MG4 ABRP Uploader is part of **MG4Suite**. The workspace `AGENTS.md` and normative
+workspace `DESIGN.md` apply; this file contains only telemetry-specific additions.
+
 ## What this is
 
 An Android Automotive app for the **MG4 (SAIC eh32)** that reads vehicle telemetry and
