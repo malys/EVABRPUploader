@@ -38,6 +38,8 @@
 
     <string name="card_service">Upload Service</string>
     <string name="label_upload_enabled">Enable background uploading</string>
+    <string name="label_autostart">Start automatically with the car</string>
+    <string name="hint_autostart">Uploading resumes on its own when the head unit powers up. Turn this off to start it by hand from this screen.</string>
 
     <string name="status_stopped">Service not running</string>
 

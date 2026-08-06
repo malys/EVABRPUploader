@@ -47,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private TextInputLayout   tokenLayout;
     private TextInputEditText tokenInput;
     private SwitchMaterial    serviceSwitch;
+    private SwitchMaterial    autostartSwitch;
     private TextView          statusText;
     private Button            testButton;
     private View              connectionStatusRow;
@@ -98,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
         tokenLayout         = findViewById(R.id.token_layout);
         tokenInput          = findViewById(R.id.token_input);
         serviceSwitch       = findViewById(R.id.service_switch);
+        autostartSwitch     = findViewById(R.id.autostart_switch);
         statusText          = findViewById(R.id.status_text);
         testButton          = findViewById(R.id.test_button);
         connectionStatusRow = findViewById(R.id.connection_status_row);
@@ -131,6 +133,11 @@ public class MainActivity extends AppCompatActivity {
         apiKeyInput.setText(savedApiKeyOrDefault());
         tokenInput.setText(securePrefs.getString(SecurePrefs.KEY_TOKEN, ""));
         serviceSwitch.setChecked(prefs.getBoolean("service_enabled", false));
+
+        autostartSwitch.setChecked(
+                prefs.getBoolean(UploadSettings.KEY_AUTOSTART, UploadSettings.DEFAULT_AUTOSTART));
+        autostartSwitch.setOnCheckedChangeListener((btn, checked) ->
+                prefs.edit().putBoolean(UploadSettings.KEY_AUTOSTART, checked).apply());
 
         // If the user wants the service running, kick it on every activity launch.
         // startForegroundService is idempotent — if the service is already up this
@@ -204,6 +211,8 @@ public class MainActivity extends AppCompatActivity {
         apiKeyInput.setText(savedApiKeyOrDefault());
         tokenInput.setText(securePrefs.getString(SecurePrefs.KEY_TOKEN, ""));
         serviceSwitch.setChecked(prefs.getBoolean("service_enabled", false));
+        autostartSwitch.setChecked(
+                prefs.getBoolean(UploadSettings.KEY_AUTOSTART, UploadSettings.DEFAULT_AUTOSTART));
         // Poll state and log only while the screen is up; onPause cancels it.
         uiHandler.post(uiRefresh);
     }

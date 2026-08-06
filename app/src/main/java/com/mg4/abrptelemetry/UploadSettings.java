@@ -14,6 +14,14 @@ final class UploadSettings {
     static final String KEY_INTERVAL_SEC    = "upload_interval_sec";
     static final String KEY_BOOST_LOW_SOC   = "boost_low_soc";
     static final String KEY_LOW_SOC_PERCENT = "low_soc_percent";
+    static final String KEY_AUTOSTART       = "autostart";
+
+    /**
+     * On by default: an ABRP plan is only useful if it is fed from the moment the drive
+     * starts, and nobody opens this app before setting off. Kept as a switch because a
+     * service that starts itself must also be switchable off.
+     */
+    static final boolean DEFAULT_AUTOSTART = true;
 
     /**
      * Default cadence while driving. 60 s is roughly 1.5 km between points at motorway

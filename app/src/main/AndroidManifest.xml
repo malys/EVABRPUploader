@@ -45,11 +45,21 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- The head unit resumes far more often than it cold-boots, and announces the
+             resume with QUICKBOOT_POWERON. Listening only for BOOT_COMPLETED is why
+             uploading did not start with the car. MY_PACKAGE_REPLACED covers the other
+             gap: an update stops the service and nothing else restarts it. -->
         <receiver
             android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
