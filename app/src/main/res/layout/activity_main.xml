@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Button navigation rather than Material tabs: on a vehicle screen, always-visible
-     64 dp targets beat a thin tab bar. Same pattern as MG4Tasker. -->
+<!--
+    A fixed top bar above a single ViewPager2, same shape as MG4Control and MG4Tasker.
+
+    The three screens — ABRP, Service, Log — are the pages of that one pager, in the
+    order the bar lists them. Each button goes to its page and a horizontal swipe walks
+    through them all: the gesture and the button name the same thing. The pages
+    themselves live in pane_abrp.xml / pane_service.xml / pane_log.xml, because a
+    ViewPager2 takes its children from an adapter rather than from this file.
+
+    Button navigation rather than Material tabs: on a vehicle screen, always-visible
+    64 dp targets beat a thin tab bar. The tabs share the width left by the title and
+    the About button equally (weight 1), so the row can be aimed at from memory whatever
+    the translated labels are.
+
+    No MaterialButtonToggleGroup: the group owns a checked state of its own, which would
+    fight the pager for who decides the current screen. Here the pager decides alone and
+    MainActivity.markCurrentPage posts isSelected — the fill, text, icon and stroke come
+    from the res/color/nav_tab_*.xml selectors.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -10,12 +27,13 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="80dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="@dimen/spacing_lg"
-        android:paddingVertical="@dimen/spacing_sm"
-        android:background="@color/mg4_surface">
+        android:baselineAligned="false"
+        android:paddingStart="@dimen/spacing_md"
+        android:paddingEnd="@dimen/spacing_md"
+        android:background="@drawable/bg_topbar">
 
         <TextView
             android:layout_width="wrap_content"
@@ -24,407 +42,51 @@
             android:textAppearance="@style/Text.MG4.Title"
             android:layout_marginEnd="@dimen/spacing_lg" />
 
-        <com.google.android.material.button.MaterialButtonToggleGroup
-            android:id="@+id/tabGroup"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:singleSelection="true"
-            app:selectionRequired="true">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/tabAbrp"
-                style="@style/Widget.MG4.Button.Outlined"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/tab_abrp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/tabService"
-                style="@style/Widget.MG4.Button.Outlined"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/tab_service" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/tabLog"
-                style="@style/Widget.MG4.Button.Outlined"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/tab_log" />
-        </com.google.android.material.button.MaterialButtonToggleGroup>
-
-        <Space
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tabAbrp"
+            style="@style/Widget.MG4.NavTab"
             android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_height="64dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="@dimen/spacing_sm"
+            android:text="@string/tab_abrp"
+            app:icon="@drawable/ic_tab_abrp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tabService"
+            style="@style/Widget.MG4.NavTab"
+            android:layout_width="0dp"
+            android:layout_height="64dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="@dimen/spacing_sm"
+            android:text="@string/tab_service"
+            app:icon="@drawable/ic_tab_service" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tabLog"
+            style="@style/Widget.MG4.NavTab"
+            android:layout_width="0dp"
+            android:layout_height="64dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="@dimen/spacing_lg"
+            android:text="@string/tab_log"
+            app:icon="@drawable/ic_tab_log" />
+
+        <!-- About opens a dialog, not a page: it stays a plain button so it cannot be
+             mistaken for a fourth destination of the pager. -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/about_button"
             style="@style/Widget.MG4.Button.Outlined"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/about_action" />
+
     </LinearLayout>
 
-    <FrameLayout
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/content"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <ScrollView
-            android:id="@+id/abrpPane"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fillViewport="true">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
-
-                <!-- Configuration card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/mg4_surface"
-                    app:cardCornerRadius="12dp"
-                    app:strokeColor="@color/mg4_outline"
-                    app:strokeWidth="1dp"
-                    app:cardElevation="3dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="@dimen/spacing_lg">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="20dp"
-                            android:text="@string/card_config"
-                            android:textAppearance="@style/Text.MG4.Title" />
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/api_key_layout"
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="16dp"
-                            android:hint="@string/hint_api_key"
-                            app:endIconContentDescription="@string/desc_toggle_api_key"
-                            app:endIconMode="password_toggle"
-                            app:endIconMinSize="@dimen/touch_target"
-                            app:helperText="@string/helper_api_key"
-                            app:helperTextTextAppearance="@style/Text.MG4.Secondary">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/api_key_input"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="textPassword"
-                                android:singleLine="true"
-                                android:textSize="@dimen/text_body" />
-
-                        </com.google.android.material.textfield.TextInputLayout>
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/token_layout"
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="@string/hint_token"
-                            app:endIconContentDescription="@string/desc_toggle_token"
-                            app:endIconMode="password_toggle"
-                            app:endIconMinSize="@dimen/touch_target"
-                            app:helperText="@string/helper_token"
-                            app:helperTextTextAppearance="@style/Text.MG4.Secondary">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/token_input"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="textPassword"
-                                android:singleLine="true"
-                                android:textSize="@dimen/text_body" />
-
-                        </com.google.android.material.textfield.TextInputLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:gravity="end"
-                            android:orientation="horizontal">
-
-                            <Button
-                                android:id="@+id/import_button"
-                                style="@style/Widget.MG4.Button.Outlined"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="12dp"
-                                android:text="@string/btn_import" />
-
-                            <Button
-                                android:id="@+id/test_button"
-                                style="@style/Widget.MG4.Button.Outlined"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="12dp"
-                                android:text="@string/btn_test" />
-
-                            <Button
-                                android:id="@+id/save_button"
-                                style="@style/Widget.MG4.Button"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/btn_save" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:id="@+id/connection_status_row"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:visibility="gone">
-
-                            <View
-                                android:id="@+id/connection_indicator"
-                                android:layout_width="14dp"
-                                android:layout_height="14dp"
-                                android:layout_marginEnd="10dp"
-                                android:background="@drawable/circle_indicator" />
-
-                            <TextView
-                                android:id="@+id/connection_status_text"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textAppearance="@style/Text.MG4.Body" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-            </LinearLayout>
-        </ScrollView>
-
-        <ScrollView
-            android:id="@+id/servicePane"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fillViewport="true"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
-
-                <!-- Service control card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/mg4_surface"
-                    app:cardCornerRadius="12dp"
-                    app:strokeColor="@color/mg4_outline"
-                    app:strokeWidth="1dp"
-                    app:cardElevation="3dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="@dimen/spacing_lg">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="20dp"
-                            android:text="@string/card_service"
-                            android:textAppearance="@style/Text.MG4.Title" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:minHeight="@dimen/touch_target">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/label_upload_enabled"
-                                android:textAppearance="@style/Text.MG4.Body" />
-
-                            <com.google.android.material.switchmaterial.SwitchMaterial
-                                android:id="@+id/service_switch"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                        </LinearLayout>
-
-                        <!-- Redémarrage automatique. Personne n'ouvre cette application avant
-                             de partir : si l'envoi ne repart pas tout seul quand la voiture
-                             s'allume, il ne repart pas du tout. -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:minHeight="@dimen/touch_target">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/label_autostart"
-                                android:textAppearance="@style/Text.MG4.Body" />
-
-                            <com.google.android.material.switchmaterial.SwitchMaterial
-                                android:id="@+id/autostart_switch"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/hint_autostart"
-                            android:textAppearance="@style/Text.MG4.Secondary" />
-
-                        <TextView
-                            android:id="@+id/status_text"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:text="@string/status_stopped"
-                            android:textAppearance="@style/Text.MG4.Body" />
-
-                        <!-- Cadence. Defaults are conservative: the head unit is awake whenever
-                             the car is on, and both the upload tick and the GPS subscription
-                             cost power for as long as it is. -->
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="20dp"
-                            android:text="@string/label_frequency"
-                            android:textAppearance="@style/Text.MG4.Body" />
-
-                        <Spinner
-                            android:id="@+id/interval_spinner"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:minHeight="@dimen/touch_target" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/hint_frequency"
-                            android:textAppearance="@style/Text.MG4.Secondary" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:minHeight="@dimen/touch_target">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/label_boost_low_soc"
-                                android:textAppearance="@style/Text.MG4.Body" />
-
-                            <com.google.android.material.switchmaterial.SwitchMaterial
-                                android:id="@+id/boost_switch"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-
-                        </LinearLayout>
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/low_soc_layout"
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="@string/label_low_soc_threshold">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/low_soc_input"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="number"
-                                android:maxLength="2" />
-
-                        </com.google.android.material.textfield.TextInputLayout>
-
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-            </LinearLayout>
-        </ScrollView>
-
-        <!-- Recent upload calls: status, time and reason for the last 20 attempts. -->
-        <ScrollView
-            android:id="@+id/logPane"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fillViewport="true"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/mg4_surface"
-                    app:cardCornerRadius="12dp"
-                    app:strokeColor="@color/mg4_outline"
-                    app:strokeWidth="1dp"
-                    app:cardElevation="3dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="@dimen/spacing_md">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/label_call_log"
-                            android:textAppearance="@style/Text.MG4.Title" />
-
-                        <TextView
-                            android:id="@+id/call_log_text"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="@dimen/spacing_sm"
-                            android:fontFamily="monospace"
-                            android:textSize="@dimen/text_secondary"
-                            android:textColor="@color/mg4_text_secondary"
-                            android:text="@string/call_log_empty" />
-
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-            </LinearLayout>
-        </ScrollView>
-
-    </FrameLayout>
+        android:layout_weight="1" />
 
 </LinearLayout>

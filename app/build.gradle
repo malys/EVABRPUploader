@@ -34,8 +34,8 @@ android {
         applicationId "com.mg4.abrptelemetry"
         minSdk 27
         targetSdk 36
-        versionCode 4
-        versionName "1.0.3"
+        versionCode 5
+        versionName "1.1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -133,6 +133,7 @@ dependencies {
     implementation libs.material
     implementation libs.activity
     implementation libs.constraintlayout
+    implementation libs.viewpager2
     implementation libs.security.crypto
     implementation 'com.google.zxing:core:3.5.3'
     // android.jar's org.json is a stub in unit tests; the real implementation lets the

@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.1.0] - 2026-08-10
+
+### Changed
+
+- Reworked the main screen as three swipeable ABRP, Service and Log pages with a fixed,
+  high-contrast top navigation bar and consistent selected-state accessibility.
+- Updated the shared MG4Hardware dependency to the current catalogue and diagnostics layer.
+
+## [1.0.3] - 2026-08-09
+
+### Fixed
+
+- Corrected stable release packaging and metadata.
+
 ## [1.0.2] - 2026-08-04
 
 ### Added

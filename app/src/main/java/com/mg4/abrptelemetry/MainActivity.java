@@ -22,6 +22,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -34,6 +36,9 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int LOCATION_PERMISSION_REQUEST = 100;
     private static final String REPOSITORY_URL = "https://github.com/malys/MG4AbrpUploader";
+
+    /** Top-bar tabs, in page order. Parallel to {@link #panes}. */
+    private static final int[] TAB_IDS = { R.id.tabAbrp, R.id.tabService, R.id.tabLog };
 
     // Status colours come from the palette, not from the Material swatches: #4CAF50 and
     // #F44336 sit around 4:1 on this background, which disappears behind a sunlit
@@ -61,6 +66,75 @@ public class MainActivity extends AppCompatActivity {
     private View abrpPane;
     private View servicePane;
     private View logPane;
+
+    /** The three pages, in the order the top bar lists them. Parallel to {@link #TAB_IDS}. */
+    private View[] panes;
+
+    /**
+     * Inflates a page with no parent, then gives it the MATCH_PARENT/MATCH_PARENT layout
+     * params ViewPager2 requires of its items — inflating detached leaves them null, and
+     * the pager throws rather than guessing.
+     */
+    private View inflatePane(int layoutRes) {
+        View pane = getLayoutInflater().inflate(layoutRes, null, false);
+        pane.setLayoutParams(new android.view.ViewGroup.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        return pane;
+    }
+
+    /**
+     * Wires the top bar to the pager: every tab is a page, and every page is a tab.
+     *
+     * Each page has its own view type, so the pager asks for it once and keeps it: these
+     * three views are the activity's own, held in {@link #panes}, not rows to be recycled.
+     */
+    private void setUpPager() {
+        ViewPager2 pager = findViewById(R.id.content);
+        pager.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            @Override public int getItemCount() { return panes.length; }
+            @Override public int getItemViewType(int position) { return position; }
+
+            @NonNull @Override
+            public RecyclerView.ViewHolder onCreateViewHolder(@NonNull android.view.ViewGroup parent,
+                                                              int viewType) {
+                return new RecyclerView.ViewHolder(panes[viewType]) {};
+            }
+
+            @Override
+            public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+                // Nothing to bind: the pages are built once in onCreate and keep their own
+                // state, exactly as they did when they were siblings in the layout.
+            }
+        });
+        // All three stay alive. They are cheap, and the service switch and the call log
+        // are read by the refresh tick whether or not their page is the one on screen.
+        pager.setOffscreenPageLimit(2);
+        pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override public void onPageSelected(int position) { markCurrentPage(position); }
+        });
+
+        for (int i = 0; i < TAB_IDS.length; i++) {
+            final int index = i;
+            // Animated, so the button does the same thing the swipe does: the direction of
+            // travel is what tells the driver where they are in the row.
+            findViewById(TAB_IDS[i]).setOnClickListener(v -> pager.setCurrentItem(index, true));
+        }
+        markCurrentPage(pager.getCurrentItem());
+    }
+
+    /**
+     * Marks the top-bar tab of the page on screen.
+     *
+     * Only isSelected is set: fill, text, icon and stroke come from the
+     * res/color/nav_tab_*.xml selectors applied by the Widget.MG4.NavTab style. isSelected
+     * also serves TalkBack, which announces the current destination.
+     */
+    private void markCurrentPage(int position) {
+        for (int i = 0; i < TAB_IDS.length; i++) {
+            findViewById(TAB_IDS[i]).setSelected(i == position);
+        }
+    }
 
     /** Refreshes state + call log while the screen is visible. */
     private final android.os.Handler uiHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -94,34 +168,34 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences("abrp_prefs", MODE_PRIVATE);
         securePrefs = SecurePrefs.get(this);
 
-        apiKeyLayout        = findViewById(R.id.api_key_layout);
-        apiKeyInput         = findViewById(R.id.api_key_input);
-        tokenLayout         = findViewById(R.id.token_layout);
-        tokenInput          = findViewById(R.id.token_input);
-        serviceSwitch       = findViewById(R.id.service_switch);
-        autostartSwitch     = findViewById(R.id.autostart_switch);
-        statusText          = findViewById(R.id.status_text);
-        testButton          = findViewById(R.id.test_button);
-        connectionStatusRow = findViewById(R.id.connection_status_row);
-        connectionIndicator = findViewById(R.id.connection_indicator);
-        connectionStatusText = findViewById(R.id.connection_status_text);
-        intervalSpinner = findViewById(R.id.interval_spinner);
-        boostSwitch = findViewById(R.id.boost_switch);
-        lowSocInput = findViewById(R.id.low_soc_input);
-        lowSocLayout = findViewById(R.id.low_soc_layout);
-        callLogText = findViewById(R.id.call_log_text);
-        abrpPane = findViewById(R.id.abrpPane);
-        servicePane = findViewById(R.id.servicePane);
-        logPane = findViewById(R.id.logPane);
+        // The three pages are inflated here, once, and handed to the pager as fixed,
+        // non-recycled items. That is what lets every widget below be looked up now and
+        // held for the life of the activity, the way it was when the panes were siblings
+        // in activity_main.xml — a recycled page would invalidate these references as
+        // soon as the user swiped away from it.
+        abrpPane    = inflatePane(R.layout.pane_abrp);
+        servicePane = inflatePane(R.layout.pane_service);
+        logPane     = inflatePane(R.layout.pane_log);
+        panes = new View[] { abrpPane, servicePane, logPane };
 
-        com.google.android.material.button.MaterialButtonToggleGroup tabGroup = findViewById(R.id.tabGroup);
-        tabGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) return;
-            abrpPane.setVisibility(checkedId == R.id.tabAbrp ? View.VISIBLE : View.GONE);
-            servicePane.setVisibility(checkedId == R.id.tabService ? View.VISIBLE : View.GONE);
-            logPane.setVisibility(checkedId == R.id.tabLog ? View.VISIBLE : View.GONE);
-        });
-        tabGroup.check(R.id.tabAbrp);
+        apiKeyLayout        = abrpPane.findViewById(R.id.api_key_layout);
+        apiKeyInput         = abrpPane.findViewById(R.id.api_key_input);
+        tokenLayout         = abrpPane.findViewById(R.id.token_layout);
+        tokenInput          = abrpPane.findViewById(R.id.token_input);
+        serviceSwitch       = servicePane.findViewById(R.id.service_switch);
+        autostartSwitch     = servicePane.findViewById(R.id.autostart_switch);
+        statusText          = servicePane.findViewById(R.id.status_text);
+        testButton          = abrpPane.findViewById(R.id.test_button);
+        connectionStatusRow = abrpPane.findViewById(R.id.connection_status_row);
+        connectionIndicator = abrpPane.findViewById(R.id.connection_indicator);
+        connectionStatusText = abrpPane.findViewById(R.id.connection_status_text);
+        intervalSpinner = servicePane.findViewById(R.id.interval_spinner);
+        boostSwitch = servicePane.findViewById(R.id.boost_switch);
+        lowSocInput = servicePane.findViewById(R.id.low_soc_input);
+        lowSocLayout = servicePane.findViewById(R.id.low_soc_layout);
+        callLogText = logPane.findViewById(R.id.call_log_text);
+
+        setUpPager();
         findViewById(R.id.about_button).setOnClickListener(v -> showAbout());
 
         bindCadenceControls();
@@ -153,9 +227,9 @@ public class MainActivity extends AppCompatActivity {
             requestLocationPermissionIfNeeded();
         }
 
-        findViewById(R.id.save_button).setOnClickListener(v -> saveCredentials());
+        abrpPane.findViewById(R.id.save_button).setOnClickListener(v -> saveCredentials());
         testButton.setOnClickListener(v -> testConnection());
-        findViewById(R.id.import_button).setOnClickListener(v -> startConfigImport());
+        abrpPane.findViewById(R.id.import_button).setOnClickListener(v -> startConfigImport());
 
         serviceSwitch.setOnCheckedChangeListener((btn, checked) -> {
             if (checked) {

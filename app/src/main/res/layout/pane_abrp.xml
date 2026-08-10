@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ABRP page of the main pager. Inflated once by MainActivity and handed to the pager
+     adapter as a fixed, non-recycled page, so the widget lookups below it stay valid for
+     the whole life of the activity. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/spacing_lg">
+
+        <!-- Configuration card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/mg4_surface"
+            app:cardCornerRadius="12dp"
+            app:strokeColor="@color/mg4_outline"
+            app:strokeWidth="1dp"
+            app:cardElevation="3dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_lg">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:text="@string/card_config"
+                    android:textAppearance="@style/Text.MG4.Title" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/api_key_layout"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:hint="@string/hint_api_key"
+                    app:endIconContentDescription="@string/desc_toggle_api_key"
+                    app:endIconMode="password_toggle"
+                    app:endIconMinSize="@dimen/touch_target"
+                    app:helperText="@string/helper_api_key"
+                    app:helperTextTextAppearance="@style/Text.MG4.Secondary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/api_key_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:singleLine="true"
+                        android:textSize="@dimen/text_body" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/token_layout"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/hint_token"
+                    app:endIconContentDescription="@string/desc_toggle_token"
+                    app:endIconMode="password_toggle"
+                    app:endIconMinSize="@dimen/touch_target"
+                    app:helperText="@string/helper_token"
+                    app:helperTextTextAppearance="@style/Text.MG4.Secondary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/token_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:singleLine="true"
+                        android:textSize="@dimen/text_body" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="end"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/import_button"
+                        style="@style/Widget.MG4.Button.Outlined"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:text="@string/btn_import" />
+
+                    <Button
+                        android:id="@+id/test_button"
+                        style="@style/Widget.MG4.Button.Outlined"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:text="@string/btn_test" />
+
+                    <Button
+                        android:id="@+id/save_button"
+                        style="@style/Widget.MG4.Button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/btn_save" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/connection_status_row"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <View
+                        android:id="@+id/connection_indicator"
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_marginEnd="10dp"
+                        android:background="@drawable/circle_indicator" />
+
+                    <TextView
+                        android:id="@+id/connection_status_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/Text.MG4.Body" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</ScrollView>

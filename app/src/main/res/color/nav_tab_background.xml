@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nav tab background. The state comes from View.isSelected, set by
+     MainActivity.markCurrentPage on the one tab whose page is on screen: no color is
+     applied by hand in code. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true" android:color="@color/mg4_accent" />
+    <item android:color="@color/mg4_surface_raised" />
+</selector>
