@@ -83,7 +83,7 @@ body:
     attributes:
       label: "Affected Projects & Versions"
       description: "Which projects and versions are affected?"
-      placeholder: "MG4ABRPUploader < 0.2.0 (online build only)"
+      placeholder: "EVABRPUploader < 0.2.0 (online build only)"
     validations:
       required: true
 

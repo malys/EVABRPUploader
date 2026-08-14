@@ -61,7 +61,7 @@ body:
       label: "Steps to Reproduce"
       description: "Exact steps to reproduce the bug"
       placeholder: |
-        1. Start MG4ABRPUploader
+        1. Start EVABRPUploader
         2. Verify ABRP connection (should show green status)
         3. Disconnect WiFi/4G
         4. Wait 30 seconds

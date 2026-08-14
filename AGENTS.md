@@ -1,8 +1,8 @@
-# AGENTS.md — MG4 ABRP Telemetry
+# AGENTS.md — EVABRPUploader
 
 Context for AI agents and new contributors working in this repository.
 
-MG4 ABRP Uploader is part of **MG4Suite**. The workspace `AGENTS.md` and normative
+EVABRPUploader is part of **EVSuite**. The workspace `AGENTS.md` and normative
 workspace `DESIGN.md` apply; this file contains only telemetry-specific additions.
 
 ## What this is
@@ -16,7 +16,7 @@ Fork of Leon Kernan's `ABRP_Uploader`. See `LICENSE.md` — the licence status i
 ## Non-negotiables
 
 1. **Read-only towards the car.** This app must never write a vehicle property. The
-   sibling MG4Control project writes settings and gates every write on 0 km/h; this one has
+   sibling EVProfile project writes settings and gates every write on 0 km/h; this one has
    no business writing at all. A write path is a bug.
 2. **A failed read is not a zero.** Getters return `Integer`/`Float`/`Boolean` and `null`
    means "could not read". Null fields are omitted from the payload. Sending 0 for SOC
@@ -52,7 +52,7 @@ anything inside the service effectively cannot be tested without a car.
 |---|---|---|
 | `main` | everything shared | all builds |
 | `stable` | `UpdateHook` no-op | stable channel |
-| `unstable` | automatic private-cache OTA (`OtaUpdater`, `ApkSignature`, `UpdateHook`) | unstable channel |
+| `unstable` | updater policy code; trigger suspended during the suite audit | unstable channel |
 | `debug` | `VhalProbe` — enumerates the whole VHAL | debug builds only |
 | `testUnstable` | OTA policy tests | test only |
 
@@ -69,16 +69,16 @@ must tolerate a property simply not existing.
 
 | Signal | Read path | Firmwares |
 |---|---|---|
-| Speed, outside temp, park | `MG4Hardware` getters (`getVehicleSpeedKmh`, `getOutsideTempCelsius`, `isVehicleInPark`) | all six — MG4Hardware branches per generation internally |
+| Speed, outside temp, park | `EVHardware` getters (`getVehicleSpeedKmh`, `getOutsideTempCelsius`, `isVehicleInPark`) | all six — EVHardware branches per generation internally |
 | SOC, range | `CarPropertyAdapter` vendor IDs (`0x2160F404`, `0x2140F41C`) | **SWI68 only** |
 | Charge rate/port, cabin temp | `CarPropertyAdapter` standard-AAOS IDs | wherever the VHAL implements them |
 
-`MG4Hardware.init()` is called in `AbrpUploadService.onCreate()` (idempotent); it detects
+`EVHardware.init()` is called in `AbrpUploadService.onCreate()` (idempotent); it detects
 the generation and picks the right underlying API. Fields it covers therefore work on every
 supported firmware.
 
 **Reference firmware: `SWI68-29958-1300R69`.** The vendor EV IDs still in
-`CarPropertyAdapter` are supported only on SWI68 firmware. MG4Hardware
+`CarPropertyAdapter` are supported only on SWI68 firmware. EVHardware
 has **no EV-battery abstraction for any generation**, so SOC and range cannot go through it;
 until those vendor IDs are confirmed on the other generations they stay SWI68-only, and on
 another firmware they may silently return nothing (handled safely — the field is omitted, but

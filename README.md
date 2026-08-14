@@ -1,11 +1,11 @@
-# MG4 ABRP Uploader
+# EVABRPUploader
 
-<p align="center"><img src="docs/logo.svg" width="440" alt="MG4 ABRP Telemetry"></p>
+<p align="center"><img src="docs/logo.svg" width="440" alt="EVABRPUploader"></p>
 
-[![Tests](https://github.com/malys/MG4AbrpTelemetry/actions/workflows/tests.yml/badge.svg)](https://github.com/malys/MG4AbrpTelemetry/actions/workflows/tests.yml)
-[![Security](https://github.com/malys/MG4AbrpTelemetry/actions/workflows/security.yml/badge.svg)](https://github.com/malys/MG4AbrpTelemetry/actions/workflows/security.yml)
-[![Unstable](https://github.com/malys/MG4AbrpTelemetry/actions/workflows/unstable.yml/badge.svg)](https://github.com/malys/MG4AbrpTelemetry/actions/workflows/unstable.yml)
-[![Release](https://img.shields.io/github/v/release/malys/MG4AbrpTelemetry?include_prereleases&sort=semver)](https://github.com/malys/MG4AbrpTelemetry/releases)
+[![Tests](https://github.com/malys/EVABRPUploader/actions/workflows/tests.yml/badge.svg)](https://github.com/malys/EVABRPUploader/actions/workflows/tests.yml)
+[![Security](https://github.com/malys/EVABRPUploader/actions/workflows/security.yml/badge.svg)](https://github.com/malys/EVABRPUploader/actions/workflows/security.yml)
+[![Unstable](https://github.com/malys/EVABRPUploader/actions/workflows/unstable.yml/badge.svg)](https://github.com/malys/EVABRPUploader/actions/workflows/unstable.yml)
+[![Release](https://img.shields.io/github/v/release/malys/EVABRPUploader?include_prereleases&sort=semver)](https://github.com/malys/EVABRPUploader/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Sends live telemetry from an **MG4 (SAIC eh32)** to
@@ -18,6 +18,8 @@ unit and talks to ABRP directly.
 > ⚠️ **No warranty, no liability.** This software is provided "as is" and runs on a
 > **vehicle**. Installing it is your decision and your risk — see
 > [`DISCLAIMER.md`](DISCLAIMER.md). Not affiliated with SAIC, MG Motor or Iternio.
+> MG and MG4 are third-party marks used only to identify compatibility; no official origin
+> or approval is claimed.
 
 > **Fork notice.** This is a fork of Leon Kernan's `ABRP_Uploader`, substantially
 > reworked. **Read [`LICENSE.md`](LICENSE.md) before redistributing anything** — the
@@ -41,8 +43,8 @@ unit and talks to ABRP directly.
 
 ## Screenshots
 <p align="center">
-  <img src="screenshots/mg4ABRP1.png" width="280" alt="MG4 ABRP Telemetry screenshot 1">
-  <img src="screenshots/mg4ABRP2.png" width="280" alt="MG4 ABRP Telemetry screenshot 2">
+  <img src="screenshots/evabrp1.png" width="280" alt="EVABRPUploader screenshot 1">
+  <img src="screenshots/evabrp2.png" width="280" alt="EVABRPUploader screenshot 2">
 </p>
 
 ---
@@ -51,15 +53,15 @@ unit and talks to ABRP directly.
 | Signal | Source | Firmwares |
 |---|---|---|
 | State of charge, range | SWI68 vendor EV properties (`CarPropertyAdapter`) | SWI68 only |
-| Speed, parked state | `MG4Hardware` (per-generation) | all supported |
-| Outside temperature | `MG4Hardware` (standard AAOS) | all supported |
+| Speed, parked state | `EVHardware` (per-generation) | all supported |
+| Outside temperature | `EVHardware` (standard AAOS) | all supported |
 | Charging, DC fast charging | Charge port state + charge rate heuristic | where the VHAL implements them |
 | Cabin temperature | HVAC property | where the VHAL implements it |
 | Position, elevation, heading | GPS | — |
 
-Firmware-agnostic signals go through **MG4Hardware**, which detects the generation
+Firmware-agnostic signals go through **EVHardware**, which detects the generation
 (SWI68/69/131/132/133/165) and picks the right underlying API. SOC and range are the
-exception: MG4Hardware exposes no EV-battery abstraction, so they still use vendor IDs
+exception: EVHardware exposes no EV-battery abstraction, so they still use vendor IDs
 confirmed on SWI68 and are read-supported on that generation only — see
 [`FIRMWARE.md`](FIRMWARE.md).
 
@@ -94,7 +96,7 @@ Two channels. Pick one — they install side by side.
 | **Stable** | No. Contains no updater at all. | You want the car to run what you put on it |
 | **Unstable** | Yes, from GitHub pre-releases | You are testing and want fixes as they land |
 
-Grab the APK from [Releases](https://github.com/malys/MG4AbrpTelemetry/releases). Stable builds are the tagged ones; unstable builds
+Grab the APK from [Releases](https://github.com/malys/EVABRPUploader/releases). Stable builds are the tagged ones; unstable builds
 are marked pre-release.
 
 ### Getting the APK onto the car
@@ -142,7 +144,7 @@ on the **ABRP** tab. The app fills in whatever the file contains. Nothing is sen
 The head unit has no file picker, so the file is not chosen by hand: copy it from a PC into
 
 ```
-Android/data/com.mg4.abrptelemetry/files/
+Android/data/com.evsuite.abrp/files/
 ```
 
 on the USB stick (or on the head unit's internal storage), then tap **Import file**. The app
@@ -206,7 +208,7 @@ gitignored, or in GitHub Actions secrets.
 ```
 app/src/main      shared code: service, car adapter, telemetry, UI
 app/src/stable    no-op update hook — the stable channel cannot self-update
-app/src/unstable  OTA updater (origin allowlist + signature check)
+app/src/unstable  audited updater policy; runtime trigger currently suspended
 app/src/debug     VHAL probe tools, absent from every release build
 app/src/test      JVM unit tests
 ```
@@ -214,7 +216,7 @@ app/src/test      JVM unit tests
 ## Project documents
 | Document | What it covers |
 |---|---|
-| [DESIGN.md](DESIGN.md) | The MG4Suite design system — colour, type, touch targets, icons |
+| [DESIGN.md](DESIGN.md) | The EVSuite design system — colour, type, touch targets, icons |
 | [AGENTS.md](AGENTS.md) | Context for AI agents working in this repository |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to build, test and submit a change |
 | [SECURITY.md](SECURITY.md) | Threat model and vulnerability disclosure |
@@ -241,4 +243,4 @@ you did not.
 ## Credits
 - Original app: **Leon Kernan** — the car-API approach and the first working uploader.
 - ABRP telemetry API: [Iternio](https://documenter.getpostman.com/view/7396339/SWTK5a8w).
-- Sibling project: **MG4Control**, whose security and CI patterns this repo reuses.
+- Sibling project: **EVProfile**, whose security and CI patterns this repo reuses.

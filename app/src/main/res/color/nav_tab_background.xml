@@ -3,6 +3,6 @@
      MainActivity.markCurrentPage on the one tab whose page is on screen: no color is
      applied by hand in code. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_selected="true" android:color="@color/mg4_accent" />
-    <item android:color="@color/mg4_surface_raised" />
+    <item android:state_selected="true" android:color="@color/ev_accent" />
+    <item android:color="@color/ev_surface_raised" />
 </selector>

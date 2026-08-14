@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    A fixed top bar above a single ViewPager2, same shape as MG4Control and MG4Tasker.
+    A fixed top bar above a single ViewPager2, same shape as EVProfile and EVTasker.
 
     The three screens — ABRP, Service, Log — are the pages of that one pager, in the
     order the bar lists them. Each button goes to its page and a horizontal swipe walks
@@ -23,7 +23,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/mg4_background">
+    android:background="@color/ev_background">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -39,12 +39,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/app_name"
-            android:textAppearance="@style/Text.MG4.Title"
+            android:textAppearance="@style/Text.EV.Title"
             android:layout_marginEnd="@dimen/spacing_lg" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/tabAbrp"
-            style="@style/Widget.MG4.NavTab"
+            style="@style/Widget.EV.NavTab"
             android:layout_width="0dp"
             android:layout_height="64dp"
             android:layout_weight="1"
@@ -54,7 +54,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/tabService"
-            style="@style/Widget.MG4.NavTab"
+            style="@style/Widget.EV.NavTab"
             android:layout_width="0dp"
             android:layout_height="64dp"
             android:layout_weight="1"
@@ -64,7 +64,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/tabLog"
-            style="@style/Widget.MG4.NavTab"
+            style="@style/Widget.EV.NavTab"
             android:layout_width="0dp"
             android:layout_height="64dp"
             android:layout_weight="1"
@@ -76,7 +76,7 @@
              mistaken for a fourth destination of the pager. -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/about_button"
-            style="@style/Widget.MG4.Button.Outlined"
+            style="@style/Widget.EV.Button.Outlined"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/about_action" />

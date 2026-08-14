@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'com.mg4.abrptelemetry'
+    namespace 'com.evsuite.abrp'
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -31,7 +31,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.mg4.abrptelemetry"
+        applicationId "com.evsuite.abrp"
         minSdk 27
         targetSdk 36
         versionCode 5
@@ -104,7 +104,7 @@ android {
 }
 
 // Version publiée par la CI pour composer le nom de l'asset APK : ce nom DOIT être
-// comparable par l'updater ("MG4AbrpTelemetry-unstable-1.0.42.apk"). Le tag de la
+// comparable par l'updater ("EVABRPUploader-unstable-1.0.42.apk"). Le tag de la
 // pré-release est la constante "unstable", écrasée à chaque build.
 tasks.register('printUnstableVersion') {
     doLast {
@@ -120,15 +120,15 @@ androidComponents {
                 // Le canal unstable garde un nom de fichier stable : l'updater identifie
                 // la version par le tag de la pré-release, jamais par le nom d'APK.
                 output.outputFileName.set(variant.flavorName == "unstable"
-                        ? "MG4AbrpTelemetry-unstable.apk"
-                        : "MG4AbrpTelemetry-${variant.flavorName}-${output.versionName.get()}.apk")
+                        ? "EVABRPUploader-unstable.apk"
+                        : "EVABRPUploader-${variant.flavorName}-${output.versionName.get()}.apk")
             }
         }
     }
 }
 
 dependencies {
-    implementation project(':mg4hardware')
+    implementation project(':evhardware')
     implementation libs.appcompat
     implementation libs.material
     implementation libs.activity

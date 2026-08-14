@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in contributing to MG4ABRPUploader! This guide explains how to report issues, suggest features, and submit code contributions—with optional support from Claude AI to improve your submissions.
+Thank you for your interest in contributing to EVABRPUploader! This guide explains how to report issues, suggest features, and submit code contributions—with optional support from Claude AI to improve your submissions.
 
 ## Table of Contents
 
@@ -50,7 +50,7 @@ Claude AI can help you:
 
 1. **Start a conversation** with Claude:
    ```
-   I need to report a bug in MG4ABRPUploader. Help me write a clear issue report.
+   I need to report a bug in EVABRPUploader. Help me write a clear issue report.
    
    [Paste your reproduction steps, error messages, network details, and logs]
    ```
@@ -95,7 +95,7 @@ Claude can help you:
 
 1. **Start a conversation** with Claude:
    ```
-   I want to suggest a new feature for MG4ABRPUploader to [describe problem].
+   I want to suggest a new feature for EVABRPUploader to [describe problem].
    
    [Provide your initial idea, use case, data source, and constraints]
    

@@ -17,7 +17,7 @@ development. It must not be treated as a vendor specification.
 
 Certificate equality alone does not prove an APK came from this project. The nightly OTA
 therefore also requires https and an exact-host GitHub allowlist. The same caveat applies
-to MG4Control's OTA.
+to EVProfile's OTA.
 
 ## Vendor property IDs
 
@@ -33,9 +33,9 @@ generations (SWI69/131/132/133/165) and the VHAL binary lists many SAIC
 platforms (`eh32`, `as33`, `ec32`, `ip42`, …); the IDs may differ there.
 
 Only SOC and range still ride these vendor IDs. Speed, outside temperature and
-park state are read through `MG4Hardware`, which branches per generation
+park state are read through `EVHardware`, which branches per generation
 internally and so covers all six firmwares — `CarPropertyAdapter` carries just
-the SWI68 EV cluster plus the standard-AAOS charge / cabin-temp reads. MG4Hardware
+the SWI68 EV cluster plus the standard-AAOS charge / cabin-temp reads. EVHardware
 has no EV-battery abstraction for any generation, which is why SOC/range cannot yet
 follow the same path. See `AGENTS.md` for the full per-signal split.
 

@@ -63,8 +63,8 @@ jobs:
           mkdir -p dist
           # The release tag is the fixed string "unstable", so the version lives in the asset
           # name: the updater matches ".apk" + "unstable" and reads the version from it.
-          find app/build/outputs/apk -name "MG4AbrpTelemetry-unstable.apk" \
-            -exec cp {} "dist/MG4AbrpTelemetry-unstable-${{ steps.version.outputs.value }}.apk" \;
+          find app/build/outputs/apk -name "EVABRPUploader-unstable.apk" \
+            -exec cp {} "dist/EVABRPUploader-unstable-${{ steps.version.outputs.value }}.apk" \;
           ls -la dist/
 
       - name: Build timestamp

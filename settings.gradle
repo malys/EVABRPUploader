@@ -22,7 +22,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MG4AbrpTelemetry"
+rootProject.name = "EVABRPUploader"
 include ':app'
-include ':mg4hardware'
-project(':mg4hardware').projectDir = file('MG4Hardware/lib')
+include ':evhardware'
+project(':evhardware').projectDir = file('EVHardware/lib')

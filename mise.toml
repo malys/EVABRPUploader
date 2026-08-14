@@ -1,4 +1,4 @@
-# Environnement de développement — MG4 ABRP Telemetry.
+# Environnement de développement — EVABRPUploader.
 #
 # Commité volontairement : il décrit comment construire le projet, pas la machine de
 # quelqu'un. Les chemins passent par {{env.HOME}} / JAVA_HOME, jamais en dur.
@@ -61,9 +61,9 @@ BUILD_TOOLS = "36.0.0"
 # Densité cible du projet : 160 dpi.
 # Écran 12,8" 1920x1080. Firmware de référence : SWI68-29958-1300R69.
 
-EMU_CAR_AVD = "mg4abrp-car"
+EMU_CAR_AVD = "evabrp-car"
 EMU_CAR_IMAGE = "system-images;android-33;android-automotive;x86_64"
-EMU_SCREEN_AVD = "mg4abrp-screen"
+EMU_SCREEN_AVD = "evabrp-screen"
 EMU_SCREEN_IMAGE = "system-images;android-28;google_apis;x86_64"
 EMU_WIDTH = "1920"
 EMU_HEIGHT = "1080"
@@ -216,6 +216,6 @@ fi
 APK=$(ls -t app/build/outputs/apk/stable/debug/*.apk | head -1)
 echo "Installation de $APK"
 $ADB install -r -g "$APK"
-$ADB shell am start -n "com.mg4.abrptelemetry/com.mg4.abrptelemetry.MainActivity"
+$ADB shell am start -n "com.evsuite.abrp/com.evsuite.abrp.MainActivity"
 echo "Lancé. Logs : mise run logs"
 '''

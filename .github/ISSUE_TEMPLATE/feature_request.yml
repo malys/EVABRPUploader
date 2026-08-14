@@ -12,7 +12,7 @@ body:
 
         Have an idea to make this project better? We'd love to hear it!
 
-        **Before requesting:** Please check if a similar feature has been requested in [Discussions](https://github.com/malys/MG4ABRPUploader/discussions).
+        **Before requesting:** Please check if a similar feature has been requested in [Discussions](https://github.com/malys/EVABRPUploader/discussions).
 
   - type: checkboxes
     id: checks
@@ -77,7 +77,7 @@ body:
       label: "Alternative Approaches"
       description: "Have you considered other ways to solve this?"
       placeholder: |
-        - Alternative 1: Use MG4Control plugin to fetch health data
+        - Alternative 1: Use EVProfile plugin to fetch health data
         - Pro: Centralized vehicle state
         - Con: adds dependency, increases APK size
       rows: 4

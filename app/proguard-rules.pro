@@ -1,4 +1,4 @@
-# MG4ABRPUploader — R8 keep rules.
+# EVABRPUploader — R8 keep rules.
 #
 # CarPropertyAdapter reaches the car through reflection only (android.car is not on the
 # compile classpath), so R8 cannot see those uses. Anything it reflects on must be kept
@@ -9,12 +9,12 @@
 
 # The adapter itself: it defines the dynamic-proxy callback interfaces the framework
 # invokes back into, which R8 cannot trace.
--keep class com.mg4.abrptelemetry.CarPropertyAdapter { *; }
--keep interface com.mg4.abrptelemetry.CarPropertyAdapter$* { *; }
+-keep class com.evsuite.abrp.CarPropertyAdapter { *; }
+-keep interface com.evsuite.abrp.CarPropertyAdapter$* { *; }
 
 # Components named from the manifest.
--keep class com.mg4.abrptelemetry.AbrpUploadService { *; }
--keep class com.mg4.abrptelemetry.BootReceiver { *; }
+-keep class com.evsuite.abrp.AbrpUploadService { *; }
+-keep class com.evsuite.abrp.BootReceiver { *; }
 
 # EncryptedSharedPreferences (androidx.security) pulls Tink in via reflection.
 -keep class com.google.crypto.tink.** { *; }

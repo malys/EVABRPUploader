@@ -58,7 +58,7 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p dist
-          find app/build/outputs/apk -name "MG4AbrpTelemetry-stable-*.apk" -exec cp {} dist/ \;
+          find app/build/outputs/apk -name "EVABRPUploader-stable-*.apk" -exec cp {} dist/ \;
           ls -la dist/
 
       - uses: actions/upload-artifact@v4
@@ -74,7 +74,7 @@ jobs:
           prerelease: false
           files: dist/*.apk
           body: |
-            ## MG4 ABRP Telemetry ${{ github.ref_name }} — stable
+            ## EVABRPUploader ${{ github.ref_name }} — stable
 
             Manual install. This build has **no auto-update**: nothing in it contacts a
             release server or downloads an APK.

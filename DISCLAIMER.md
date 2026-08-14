@@ -18,18 +18,19 @@ otherwise, arising from, out of or in connection with the software or its use.
 - Telemetry may be **wrong, delayed or missing**. Never rely on it for range or charging
   decisions where being wrong matters — check the car's own instruments.
 - The **unstable channel is untested on vehicles** by definition. It builds automatically
-  from `main` and updates itself. Run it only if you accept that.
+  from `main`; its OTA trigger is suspended during the suite safety and legal audit.
 - Vehicle data is uploaded to **A Better Route Planner**, a third-party service governed
   by its own terms and privacy policy. This project has no control over what happens to
   data once sent.
-- Reading vehicle properties uses **undocumented OEM interfaces** discovered by
-  inspection. They can change or disappear with any firmware update.
+- Reading vehicle properties uses **undocumented runtime interfaces**. They can change or
+  disappear with any firmware update.
 
 ## Not affiliated
 
 This project is **not affiliated with, endorsed by, or supported by** SAIC Motor, MG
-Motor, Iternio (A Better Route Planner), or Google. All trademarks belong to their
-respective owners. "MG4" is used only to identify the vehicle the software targets.
+Motor, Iternio (A Better Route Planner), or Google. MG, MG4 and related names and logos are
+trademarks of their respective owners. They are used solely to identify compatibility with
+certain vehicles; no official origin, certification or approval is claimed.
 
 ## Contributors
 
