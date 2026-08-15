@@ -105,7 +105,7 @@ run = './gradlew -Dorg.gradle.java.home=$JAVA_HOME testStableDebugUnitTest testU
 
 [tasks.lint]
 description = "Analyse lint Android"
-run = './gradlew -Dorg.gradle.java.home=$JAVA_HOME lintStableDebug'
+run = './gradlew -Dorg.gradle.java.home=$JAVA_HOME lintStableDebug lintUnstableDebug'
 
 [tasks.permissions]
 description = "Contrôle de dérive des permissions (le même que la CI)"
