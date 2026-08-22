@@ -71,6 +71,15 @@ jobs:
         id: date
         run: echo "value=$(date -u +'%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
 
+      - name: Extract changelog
+        id: changelog
+        run: |
+          {
+            echo 'notes<<CHANGELOG_EOF'
+            ./release-notes.sh --latest
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       # One rolling pre-release: drop the previous release and its tag so the new one is
       # published at this commit instead of leaving the tag behind on the old sha.
       - name: Reset rolling unstable release
@@ -97,5 +106,8 @@ jobs:
             Installed unstable builds update themselves from this channel. The updater accepts
             an APK only over https from a GitHub host, and only if it is signed with the
             same certificate as the running app — otherwise it deletes the file.
+
+            ### Changelog
+            ${{ steps.changelog.outputs.notes }}
 
             Commit: ${{ github.sha }}

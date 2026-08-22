@@ -66,6 +66,15 @@ jobs:
           name: mg4-abrp-telemetry-stable
           path: dist/*.apk
 
+      - name: Extract changelog
+        id: changelog
+        run: |
+          {
+            echo 'notes<<CHANGELOG_EOF'
+            ./release-notes.sh "${{ github.ref_name }}" || ./release-notes.sh --latest
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -85,3 +94,6 @@ jobs:
             ### Install
             Copy the APK to a USB stick, open the Files app on the car and tap it.
             See the README for how to reach the Files app on an MG4.
+
+            ### Changelog
+            ${{ steps.changelog.outputs.notes }}
