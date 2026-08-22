@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Telemetry no longer stops while the car is charging. Charge detection relied solely on
+  the standard AAOS charge-port property, which this VHAL need not implement: a plugged-in
+  car reading "unplugged" was treated as parked and idle and throttled to one sample every
+  15 minutes, so ABRP never saw the SOC curve it needs to size a charging stop. The charge
+  rate and, failing that, a rising SOC on a parked car are now used as fallbacks.
+- `power` is now signed ABRP's way — positive leaving the battery, negative charging. The
+  vehicle's charge rate uses the opposite convention and was being forwarded unchanged, so
+  ABRP saw a fast-charging car as discharging.
+
 ## [2.0.0] - 2026-08-15
 
 ### ⚠️ Breaking — existing users must install once more

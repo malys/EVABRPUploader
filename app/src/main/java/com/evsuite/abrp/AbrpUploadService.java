@@ -102,6 +102,8 @@ public class AbrpUploadService extends Service {
     private volatile Boolean lastParked = null;
     private volatile Boolean lastCharging = null;
     private volatile long lastUploadAttemptMs = 0L;
+    /** Charge detection state. Touched only from the scheduler thread, inside doUpload. */
+    private final ChargingSignal chargingSignal = new ChargingSignal();
     private volatile UploadSettings settings = UploadSettings.defaults();
     /** False while no GPS subscription is delivering — drives the watchdog re-arm. */
     private volatile boolean locationUpdatesActive = false;
@@ -279,13 +281,13 @@ public class AbrpUploadService extends Service {
         // every generation. The old local vendor ID (0x15602511) was SWI68-only.
         Float extTemp = EVHardware.INSTANCE.getOutsideTempCelsius();
 
-        // Charge rate comes in mW (signed: +ve charging, -ve driving). ABRP wants kW.
-        Float chargeRate = carUp ? carAdapter.getFloatProperty(
+        // Charge rate comes in mW, signed the VHAL's way: +ve charging, -ve driving.
+        Float chargeRateRaw = carUp ? carAdapter.getFloatProperty(
                 CarPropertyAdapter.PROP_EV_INSTANTANEOUS_CHARGE_RATE,
                 CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-        Float powerKw = chargeRate == null ? null : chargeRate / 1_000_000f;
+        Float chargeRateKw = chargeRateRaw == null ? null : chargeRateRaw / 1_000_000f;
 
-        Boolean charging = carUp ? carAdapter.getBooleanProperty(
+        Boolean portConnected = carUp ? carAdapter.getBooleanProperty(
                 CarPropertyAdapter.PROP_EV_CHARGE_PORT_CONNECTED,
                 CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
 
@@ -293,10 +295,21 @@ public class AbrpUploadService extends Service {
         // / VehicleConditionManager depending on firmware). Null means unknown, not "moving".
         Boolean parked = EVHardware.INSTANCE.isVehicleInPark();
 
+        // The charge port property is standard AAOS and this VHAL need not implement it.
+        // Trusting it alone meant a plugged-in car that reads "unplugged" was treated as
+        // parked-and-idle and throttled to one sample every 15 minutes for the whole
+        // charge — see ChargingSignal for the fallbacks.
+        Boolean charging = chargingSignal.evaluate(
+                System.currentTimeMillis(), portConnected, chargeRateKw, parked, soc);
+
+        // ABRP signs power the other way round from the VHAL: positive is power leaving
+        // the battery (driving), negative is power going into it (charging).
+        Float powerKw = chargeRateKw == null ? null : -chargeRateKw;
+
         // DCFC heuristic: charging at AC speeds (3-22 kW) is type-2; above ~25 kW
         // it can only be DC fast. Undecidable if either input is missing.
-        Boolean dcfc = (charging == null || powerKw == null)
-                ? null : (charging && powerKw > 25f);
+        Boolean dcfc = (charging == null || chargeRateKw == null)
+                ? null : (charging && chargeRateKw > 25f);
 
         // Cabin temperature — try the standard HVAC property, may fail on this VHAL.
         Float cabinTemp = carUp ? carAdapter.getFloatProperty(
