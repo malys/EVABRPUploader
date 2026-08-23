@@ -4,6 +4,26 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- The telemetry payload now carries every ABRP field this vehicle can actually answer:
+  pack temperature, usable capacity, state of energy, odometer, climate setpoint, the four
+  tyre pressures, and `kwh_charged` for the running charge session. `kwh_charged` has no
+  counter in the VHAL, so it is integrated from the instantaneous charge rate on every
+  sample tick — including the ticks the cadence policy throttles away — and resets when a
+  new session starts.
+- Range falls back to the standard AAOS `RANGE_REMAINING` property when the SWI68 vendor
+  cluster answers nothing, so range now reaches ABRP on other firmware generations too.
+
+### Fixed
+
+- Three vehicle property IDs were off by one and had silently disabled their fields: the
+  charge-port read was the flap (`EV_CHARGE_PORT_OPEN`) rather than the cable
+  (`EV_CHARGE_PORT_CONNECTED`), and the cabin-temperature ID was not a VehiclePropertyIds
+  value at all, so `cabin_temp` had never been sent.
+
 ## [2.0.1] - 2026-08-22
 
 ### Fixed

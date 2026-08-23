@@ -52,18 +52,25 @@ unit and talks to ABRP directly.
 ## Overview
 | Signal | Source | Firmwares |
 |---|---|---|
-| State of charge, range | SWI68 vendor EV properties (`CarPropertyAdapter`) | SWI68 only |
+| State of charge | SWI68 vendor EV property (`CarPropertyAdapter`) | SWI68 only |
+| Range | SWI68 vendor EV property, falling back to standard AAOS `RANGE_REMAINING` | all supported (vendor first) |
 | Speed, parked state | `EVHardware` (per-generation) | all supported |
 | Outside temperature | `EVHardware` (standard AAOS) | all supported |
 | Charging, DC fast charging | Charge port state + charge rate heuristic | where the VHAL implements them |
+| Charged energy this session | Charge rate integrated over the session | where the charge rate is readable |
+| State of energy, pack capacity, pack temperature | Standard AAOS EV properties | where the VHAL implements them |
+| Odometer, tyre pressures | Standard AAOS properties (privileged) | platform-signed installs only |
 | Cabin temperature | HVAC property | where the VHAL implements it |
+| Climate setpoint | `EVHardware` (per-generation HVAC) | all supported |
 | Position, elevation, heading | GPS | — |
 
 Firmware-agnostic signals go through **EVHardware**, which detects the generation
-(SWI68/69/131/132/133/165) and picks the right underlying API. SOC and range are the
-exception: EVHardware exposes no EV-battery abstraction, so they still use vendor IDs
-confirmed on SWI68 and are read-supported on that generation only — see
-[`FIRMWARE.md`](FIRMWARE.md).
+(SWI68/69/131/132/133/165) and picks the right underlying API. SOC is the exception:
+EVHardware exposes no EV-battery abstraction, so it still uses a vendor ID confirmed on
+SWI68 and is read-supported on that generation only — see [`FIRMWARE.md`](FIRMWARE.md).
+
+Odometer and tyre pressures sit behind privileged AAOS permissions: a platform-signed
+install sends them, any other install simply omits them.
 
 A property the car will not give up is **omitted** from the payload, never sent as zero —
 so ABRP is never told the battery is empty because a read failed.

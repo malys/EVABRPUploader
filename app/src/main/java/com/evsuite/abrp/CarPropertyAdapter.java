@@ -45,10 +45,37 @@ public class CarPropertyAdapter {
     // if not, look for vendor equivalents via VhalProbe (debug builds only):
     //  - charge rate is signed mW: positive while charging, negative while driving
     //  - charge port connected is bool: true when cable plugged in
+    //
+    // Every ID below is VehiclePropertyIds from AOSP; do not retype them by hand. The two
+    // corrections noted here were both off-by-one transcriptions that silently disabled a
+    // field, because an unknown ID reads as null and a null field is simply omitted.
     public static final int PROP_EV_INSTANTANEOUS_CHARGE_RATE = 0x1160030C; // float mW, area 0
-    public static final int PROP_EV_CHARGE_PORT_CONNECTED     = 0x1120030A; // bool,    area 0
+    // 0x1120030A is EV_CHARGE_PORT_OPEN — the flap, not the cable. That is what this app
+    // read while calling it "connected": on a car whose flap stays shut around the plug it
+    // reported "unplugged" for the whole charge, which is the exact input ChargingSignal
+    // was given fallbacks for. EV_CHARGE_PORT_CONNECTED is the next ID up.
+    public static final int PROP_EV_CHARGE_PORT_CONNECTED     = 0x1120030B; // bool,    area 0
+    public static final int PROP_EV_BATTERY_AVG_TEMP          = 0x1160030E; // float °C, area 0
+    /** EV_BATTERY_LEVEL: energy currently in the pack, in Wh — ABRP's soe, in kWh. */
+    public static final int PROP_EV_BATTERY_LEVEL             = 0x11600309; // float Wh, area 0
+    /**
+     * RANGE_REMAINING, in METRES. Standard-AAOS fallback for the vendor range cluster,
+     * which is only known-valid on SWI68 — on any other generation this is the only
+     * range figure the car will give us.
+     */
+    public static final int PROP_RANGE_REMAINING              = 0x11600308; // float m,  area 0
+    public static final int PROP_INFO_EV_BATTERY_CAPACITY     = 0x11600106; // float Wh, area 0
+    public static final int PROP_ODOMETER                     = 0x11600204; // float km, area 0
     // Standard AAOS HVAC: cabin temperature (measured). Zoned — read from HVAC area.
-    public static final int PROP_CABIN_TEMP     = 0x15600903; // float °C, area 117
+    // Was 0x15600903, which is not a VehiclePropertyIds value at all, so cabin_temp has
+    // never been sent. HVAC_TEMPERATURE_CURRENT is 0x15600502.
+    public static final int PROP_CABIN_TEMP     = 0x15600502; // float °C, area 117
+    /** Tyre pressure, per wheel. Area is a VehicleAreaWheel bit, not a zone id. */
+    public static final int PROP_TIRE_PRESSURE  = 0x17600309; // float kPa
+    public static final int WHEEL_LEFT_FRONT    = 0x01;
+    public static final int WHEEL_RIGHT_FRONT   = 0x02;
+    public static final int WHEEL_LEFT_REAR     = 0x04;
+    public static final int WHEEL_RIGHT_REAR    = 0x08;
     public static final int PROP_AREA_GLOBAL    = 0;
     public static final int PROP_AREA_HVAC      = 117;
 

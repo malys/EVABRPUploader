@@ -104,6 +104,7 @@ public class AbrpUploadService extends Service {
     private volatile long lastUploadAttemptMs = 0L;
     /** Charge detection state. Touched only from the scheduler thread, inside doUpload. */
     private final ChargingSignal chargingSignal = new ChargingSignal();
+    private final ChargeMeter    chargeMeter    = new ChargeMeter();
     private volatile UploadSettings settings = UploadSettings.defaults();
     /** False while no GPS subscription is delivering — drives the watchdog re-arm. */
     private volatile boolean locationUpdatesActive = false;
@@ -276,6 +277,14 @@ public class AbrpUploadService extends Service {
         Integer rangeKm = carUp ? carAdapter.getIntProperty(
                 CarPropertyAdapter.PROP_EV_RANGE_KM,
                 CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
+        if (carUp && (rangeKm == null || rangeKm <= 0)) {
+            // The vendor cluster above is confirmed on SWI68 only; everywhere else it
+            // reads null or 0. RANGE_REMAINING is standard AAOS and is in METRES.
+            Float rangeM = carAdapter.getFloatProperty(
+                    CarPropertyAdapter.PROP_RANGE_REMAINING,
+                    CarPropertyAdapter.PROP_AREA_GLOBAL);
+            rangeKm = (rangeM == null || rangeM <= 0f) ? null : Math.round(rangeM / 1000f);
+        }
 
         // Outside temp via EVHardware: standard AAOS ENV_OUTSIDE_TEMPERATURE, valid on
         // every generation. The old local vendor ID (0x15602511) was SWI68-only.
@@ -316,6 +325,34 @@ public class AbrpUploadService extends Service {
                 CarPropertyAdapter.PROP_CABIN_TEMP,
                 CarPropertyAdapter.PROP_AREA_HVAC) : null;
 
+        // Pack temperature. Standard AAOS, but only since Android 14 — on AAOS 9 this is
+        // very likely absent, which costs one null read and omits the field.
+        Float battTemp = carUp ? carAdapter.getFloatProperty(
+                CarPropertyAdapter.PROP_EV_BATTERY_AVG_TEMP,
+                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
+
+        // Nominal usable pack capacity, in Wh — ABRP wants kWh.
+        Float capacityWh = carUp ? carAdapter.getFloatProperty(
+                CarPropertyAdapter.PROP_INFO_EV_BATTERY_CAPACITY,
+                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
+
+        // Energy currently in the pack, in Wh — ABRP wants kWh.
+        Float soeWh = carUp ? carAdapter.getFloatProperty(
+                CarPropertyAdapter.PROP_EV_BATTERY_LEVEL,
+                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
+
+        Float odometerKm = carUp ? carAdapter.getFloatProperty(
+                CarPropertyAdapter.PROP_ODOMETER,
+                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
+
+        // Climate setpoint via EVHardware: it already resolves HVAC per generation.
+        Float hvacSetpoint = EVHardware.INSTANCE.getTemperatureSetCelsius();
+
+        // Sampled before the cadence check below: the meter integrates the charge rate
+        // over time, so it has to see every tick, not only the ones that get uploaded.
+        Double kwhCharged = chargeMeter.sample(
+                System.currentTimeMillis(), charging, chargeRateKw);
+
         // Thin out uploads while the car is parked and not charging. Evaluated here, once
         // parked/charging are known, so a transition is never delayed.
         boolean stateChanged = !java.util.Objects.equals(parked, lastParked)
@@ -331,18 +368,45 @@ public class AbrpUploadService extends Service {
         }
         lastUploadAttemptMs = System.currentTimeMillis();
 
-        long utc = System.currentTimeMillis() / 1000;
         Location loc = lastLocation;
 
-        String tlm = TelemetryPayload.build(
-                utc, soc, speedKmh, rangeKm, extTemp, powerKw,
-                charging, dcfc, parked, cabinTemp,
-                loc != null ? loc.getLatitude()  : null,
-                loc != null ? loc.getLongitude() : null,
-                (loc != null && loc.hasAltitude()) ? loc.getAltitude() : null,
-                (loc != null && loc.hasBearing()) ? loc.getBearing()  : null);
+        TelemetryPayload tlm = new TelemetryPayload(System.currentTimeMillis() / 1000);
+        tlm.soc           = soc;
+        tlm.speedKmh      = speedKmh;
+        tlm.rangeKm       = rangeKm;
+        tlm.extTemp       = extTemp;
+        tlm.powerKw       = powerKw;
+        tlm.charging      = charging;
+        tlm.dcfc          = dcfc;
+        tlm.parked        = parked;
+        tlm.cabinTemp     = cabinTemp;
+        tlm.battTempC     = battTemp;
+        tlm.capacityKwh   = capacityWh == null ? null : capacityWh / 1000f;
+        tlm.soeKwh        = soeWh == null ? null : soeWh / 1000f;
+        tlm.kwhCharged    = kwhCharged;
+        tlm.odometerKm    = odometerKm;
+        tlm.hvacSetpointC = hvacSetpoint;
+        if (carUp) {
+            tlm.tirePressureFlKpa = tirePressure(CarPropertyAdapter.WHEEL_LEFT_FRONT);
+            tlm.tirePressureFrKpa = tirePressure(CarPropertyAdapter.WHEEL_RIGHT_FRONT);
+            tlm.tirePressureRlKpa = tirePressure(CarPropertyAdapter.WHEEL_LEFT_REAR);
+            tlm.tirePressureRrKpa = tirePressure(CarPropertyAdapter.WHEEL_RIGHT_REAR);
+        }
+        if (loc != null) {
+            tlm.lat       = loc.getLatitude();
+            tlm.lon       = loc.getLongitude();
+            tlm.elevation = loc.hasAltitude() ? loc.getAltitude() : null;
+            tlm.heading   = loc.hasBearing()  ? loc.getBearing()  : null;
+        }
 
-        sendToAbrp(apiKey, token, tlm, soc, speedKmh, carUp);
+        sendToAbrp(apiKey, token, tlm.build(), soc, speedKmh, carUp);
+    }
+
+    /** One wheel's pressure in kPa, or null when that wheel has no readable sensor. */
+    private Float tirePressure(int wheelArea) {
+        CarPropertyAdapter adapter = carAdapter;
+        if (adapter == null) return null;
+        return adapter.getFloatProperty(CarPropertyAdapter.PROP_TIRE_PRESSURE, wheelArea);
     }
 
     private void sendToAbrp(String apiKey, String token, String tlmJson,
