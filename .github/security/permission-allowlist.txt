@@ -21,3 +21,9 @@ android.car.permission.CAR_ENERGY_PORTS
 android.car.permission.CAR_EXTERIOR_ENVIRONMENT
 android.car.permission.CONTROL_CAR_CLIMATE
 android.car.permission.CAR_VENDOR_EXTENSION
+# Read-only odometer telemetry; unreadable values are omitted from the ABRP payload.
+android.car.permission.CAR_MILEAGE
+# Read-only per-wheel tyre pressure telemetry; unreadable values are omitted.
+android.car.permission.CAR_TIRES
+# Read-only nominal EV battery capacity telemetry; unreadable values are omitted.
+android.car.permission.CAR_INFO
