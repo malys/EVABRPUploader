@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2026-08-25
+
+### Removed
+
+- `android.car.permission.CAR_POWERTRAIN` — declared since the first release and never used.
+  The app reads no powertrain property: park state comes from the vendor gear services through
+  EVHardware, and nothing here touches the standard AAOS gear or ignition properties the
+  permission guards. Dropped from the manifest and from the security allowlist.
+
 ## [2.1.2] - 2026-08-25
 
 ### Fixed

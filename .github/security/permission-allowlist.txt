@@ -15,7 +15,6 @@ android.permission.ACCESS_FINE_LOCATION
 android.permission.ACCESS_COARSE_LOCATION
 # --- vehicle data (read-only: this app never writes to the car) ---
 android.car.permission.CAR_SPEED
-android.car.permission.CAR_POWERTRAIN
 android.car.permission.CAR_ENERGY
 android.car.permission.CAR_ENERGY_PORTS
 android.car.permission.CAR_EXTERIOR_ENVIRONMENT
