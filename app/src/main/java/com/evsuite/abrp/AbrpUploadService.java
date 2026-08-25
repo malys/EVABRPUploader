@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 
 import android.Manifest;
@@ -87,6 +88,17 @@ public class AbrpUploadService extends Service {
     private static final long   FIRST_UPLOAD_DELAY_SEC = 20;
     private static final long   CAR_RECONNECT_INTERVAL_SEC = 30;
     private static final long   LOCATION_RETRY_INTERVAL_SEC = 30;
+    /**
+     * Floor for how old a GPS fix may be and still describe where the car is now.
+     *
+     * A fix has no expiry of its own, so the previous behaviour was to keep reporting the
+     * last one forever: the position saved when the car was parked at home was uploaded,
+     * stamped with the current time, for the whole first part of the next drive. ABRP then
+     * plans from a place the car left minutes ago. The subscription asks for a fix every
+     * upload interval, so anything older than several intervals means the receiver has
+     * stopped producing (garage, tunnel) and position is genuinely unknown.
+     */
+    private static final long   MIN_LOCATION_MAX_AGE_MS = 5 * 60 * 1000L;
 
     // Set from the main thread (LocationListener uses Main looper), read from
     // the scheduler thread inside doUpload. volatile is sufficient since Location
@@ -412,7 +424,7 @@ public class AbrpUploadService extends Service {
         }
         lastUploadAttemptMs = System.currentTimeMillis();
 
-        Location loc = lastLocation;
+        Location loc = freshLocation();
 
         TelemetryPayload tlm = new TelemetryPayload(System.currentTimeMillis() / 1000);
         tlm.soc           = soc;
@@ -443,7 +455,13 @@ public class AbrpUploadService extends Service {
             tlm.heading   = loc.hasBearing()  ? loc.getBearing()  : null;
         }
 
-        sendToAbrp(apiKey, token, tlm.build(), soc, speedKmh, carUp);
+        String tlmJson = tlm.build();
+        // What actually went on the wire, so a value that looks wrong on the ABRP side can
+        // be traced back to the read that produced it — or to the read that did not.
+        Log.i(TAG, "TLM " + TelemetryPayload.summarize(tlmJson)
+                + (loc == null ? "" : " (fix age " + locationAgeMs(loc) / 1000 + "s)"));
+
+        sendToAbrp(apiKey, token, tlmJson, soc, speedKmh, carUp);
     }
 
     /** One wheel's pressure in kPa, or null when that wheel has no readable sensor. */
@@ -522,6 +540,39 @@ public class AbrpUploadService extends Service {
     };
 
     /**
+     * The last GPS fix if it still describes where the car is, otherwise null so the
+     * payload omits position entirely. Omitting it leaves ABRP on its own last known
+     * point; sending a stale one actively moves the car back to where it used to be.
+     */
+    private Location freshLocation() {
+        Location loc = lastLocation;
+        if (loc == null) return null;
+        long ageMs = locationAgeMs(loc);
+        long maxAgeMs = maxLocationAgeMs();
+        if (ageMs > maxAgeMs) {
+            Log.w(TAG, "Dropping stale GPS fix: " + ageMs / 1000 + "s old (max "
+                    + maxAgeMs / 1000 + "s) — position omitted");
+            return null;
+        }
+        return loc;
+    }
+
+    /**
+     * Age of a fix, measured on the monotonic clock. Location.getTime() is wall-clock and
+     * the head unit adjusts its own clock from GPS, which can make a fresh fix look like
+     * it came from the future — or from hours ago — the moment that correction lands.
+     */
+    private static long locationAgeMs(Location loc) {
+        return (SystemClock.elapsedRealtimeNanos() - loc.getElapsedRealtimeNanos())
+                / 1_000_000L;
+    }
+
+    /** Several subscription intervals, so a single missed fix never blanks the position. */
+    private long maxLocationAgeMs() {
+        return Math.max(MIN_LOCATION_MAX_AGE_MS, 3 * settings.intervalMs());
+    }
+
+    /**
      * Subscribes to GPS updates. Safe to call repeatedly: the previous subscription is
      * removed first, so the watchdog can re-arm without stacking listeners.
      */
@@ -539,8 +590,17 @@ public class AbrpUploadService extends Service {
                         locationListener, Looper.getMainLooper());
                 locationUpdatesActive = true;
                 lastLocationRequestMs = System.currentTimeMillis();
+                // Seed from the last known fix so the first upload is not position-less —
+                // but only if it is recent. This is where the car's overnight parking spot
+                // used to come from: cold GPS at start-up delivers nothing for the first
+                // minutes, and the fix from the previous drive filled the gap.
                 Location last = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                if (last != null) lastLocation = last;
+                if (last != null && locationAgeMs(last) <= maxLocationAgeMs()) {
+                    lastLocation = last;
+                } else if (last != null) {
+                    Log.i(TAG, "Ignoring last known fix: " + locationAgeMs(last) / 1000
+                            + "s old, waiting for a live one");
+                }
             } else {
                 Log.w(TAG, "GPS provider disabled — will retry");
                 lastLocationRequestMs = System.currentTimeMillis();

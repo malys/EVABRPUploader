@@ -73,7 +73,10 @@ Odometer and tyre pressures sit behind privileged AAOS permissions: a platform-s
 install sends them, any other install simply omits them.
 
 A property the car will not give up is **omitted** from the payload, never sent as zero —
-so ABRP is never told the battery is empty because a read failed.
+so ABRP is never told the battery is empty because a read failed. Position is held to the
+same rule in time as well as in value: a GPS fix older than `max(5 min, 3 x your upload
+interval)` is dropped rather than resent, so a stale fix cannot report the car back at the
+place it set off from.
 
 **The app never writes to the car.** It only reads. Any write path would be a bug; see
 [`SECURITY.md`](SECURITY.md).

@@ -4,6 +4,33 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.4] - 2026-08-25
+
+### Fixed
+
+- **The car was reported where it used to be, not where it is.** A GPS fix had no expiry, so
+  `lastLocation` kept whatever it last held. Two paths turned that into a wrong position:
+  start-up seeded it from `getLastKnownLocation()` unconditionally — with a cold receiver that
+  is the *previous* drive's fix, uploaded stamped with the current time for the first minutes
+  of every trip — and once the receiver stopped delivering (garage, tunnel) the same fix was
+  resent forever. A fix is now dropped past `max(5 min, 3 x upload interval)`, measured on the
+  monotonic clock rather than the wall clock, which the head unit adjusts from GPS itself.
+  Position is then omitted and ABRP keeps its own last point instead of being moved backwards.
+- **`ext_temp` could be sent as a freezing day the car never measured.** It was the only
+  temperature without a plausibility guard, while `cabin_temp`, `batt_temp` and `hvac_setpoint`
+  all had one. A VHAL that does not implement `ENV_OUTSIDE_TEMPERATURE` returns `0.0` rather
+  than throwing, so the read looked successful and `ext_temp: 0` went to ABRP's consumption
+  model. Now guarded like the others (-50..80 degC, exactly 0.0 excluded). A genuine 0 degC is
+  lost with it — the cheaper of the two errors, and the same trade-off already made three times.
+
+### Added
+
+- **A one-line summary of every upload in the log.** `TelemetryPayload.summarize()` renders
+  what actually went on the wire, derived from the JSON itself so it cannot drift from the
+  payload it describes, and names the fields that were left out. That is what separates a read
+  that failed from a read that returned something wrong — the question this release started from.
+  Dropped stale fixes are logged with their age.
+
 ## [2.1.3] - 2026-08-25
 
 ### Removed

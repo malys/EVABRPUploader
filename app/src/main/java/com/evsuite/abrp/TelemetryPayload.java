@@ -63,7 +63,13 @@ final class TelemetryPayload {
             putIfPresent(tlm, "soc", soc);
             putIfPresent(tlm, "speed", speedKmh == null ? null : Math.round(speedKmh));
             putIfPresent(tlm, "est_battery_range", rangeKm);
-            putIfPresent(tlm, "ext_temp", extTemp == null ? null : Math.round(extTemp));
+            // Outside temp gets the same plausibility guard as the other temperatures:
+            // a VHAL that does not implement ENV_OUTSIDE_TEMPERATURE answers 0.0, and
+            // ABRP treats "0 °C outside" as a real reading that costs range in its plan.
+            // A genuine 0 °C is lost with it, which is the cheaper of the two errors.
+            if (isPlausibleTemp(extTemp)) {
+                tlm.put("ext_temp", Math.round(extTemp));
+            }
             if (powerKw != null) tlm.put("power", round2(powerKw));
             putIfPresent(tlm, "is_charging", boolToInt(charging));
             putIfPresent(tlm, "is_dcfc", boolToInt(dcfc));
@@ -152,5 +158,44 @@ final class TelemetryPayload {
     /** ABRP expects kW with 2 decimals; avoids a locale-dependent String.format. */
     private static double round2(float value) {
         return Math.round(value * 100.0) / 100.0;
+    }
+
+    /**
+     * Every field {@link #build()} can emit, in the order the summary lists them.
+     * Used only to work out what was left out — see {@link #summarize(String)}.
+     */
+    private static final String[] ALL_FIELDS = {
+            "utc", "soc", "speed", "power", "est_battery_range", "ext_temp", "cabin_temp",
+            "batt_temp", "hvac_setpoint", "capacity", "soe", "kwh_charged", "odometer",
+            "is_charging", "is_dcfc", "is_parked", "lat", "lon", "elevation", "heading",
+            "tire_pressure_fl", "tire_pressure_fr", "tire_pressure_rl", "tire_pressure_rr",
+    };
+
+    /**
+     * One-line, human-readable digest of an upload: what was sent, and what was left out.
+     *
+     * Derived from the JSON that actually goes on the wire rather than from the fields
+     * above, so it cannot drift away from the payload it claims to describe — which is
+     * the whole point of having it when a value on the ABRP side looks wrong.
+     */
+    static String summarize(String tlmJson) {
+        JSONObject tlm;
+        try {
+            tlm = new JSONObject(tlmJson);
+        } catch (JSONException e) {
+            return "unparseable payload: " + tlmJson;
+        }
+        StringBuilder sent = new StringBuilder();
+        StringBuilder omitted = new StringBuilder();
+        for (String field : ALL_FIELDS) {
+            if (tlm.has(field)) {
+                if (sent.length() > 0) sent.append(' ');
+                sent.append(field).append('=').append(tlm.opt(field));
+            } else {
+                if (omitted.length() > 0) omitted.append(',');
+                omitted.append(field);
+            }
+        }
+        return sent + (omitted.length() == 0 ? "" : " | omitted: " + omitted);
     }
 }

@@ -295,4 +295,39 @@ public class TelemetryPayloadTest {
         new JSONObject(fullCar().build());
         new JSONObject(noCar());
     }
+
+    @Test
+    public void unimplementedOutsideTempIsOmittedNotSentAsZero() {
+        // A VHAL without ENV_OUTSIDE_TEMPERATURE answers 0.0. Sent as ext_temp:0 it is a
+        // freezing day as far as ABRP's consumption model is concerned.
+        TelemetryPayload t = fullCar();
+        t.extTemp = 0f;
+        assertFalse(t.build().contains("ext_temp"));
+    }
+
+    @Test
+    public void impossibleOutsideTempIsOmitted() {
+        TelemetryPayload t = fullCar();
+        t.extTemp = -273f;
+        assertFalse(t.build().contains("ext_temp"));
+    }
+
+    @Test
+    public void summaryListsSentValuesAndOmittedFields() {
+        String summary = TelemetryPayload.summarize(fullCar().build());
+        assertTrue(summary, summary.contains("soc=63"));
+        assertTrue(summary, summary.contains("ext_temp=12"));
+        assertTrue(summary, summary.contains("cabin_temp=22"));
+        // Nothing gave us a position, so lat/lon must show up as omitted, not as 0.
+        assertFalse(summary, summary.contains("lat="));
+        assertTrue(summary, summary.contains("| omitted: "));
+        assertTrue(summary, summary.substring(summary.indexOf("| omitted: ")).contains("lat"));
+    }
+
+    @Test
+    public void summaryOfAnEmptyPayloadReportsEverythingOmitted() {
+        String summary = TelemetryPayload.summarize(noCar());
+        assertTrue(summary, summary.startsWith("utc=1700000000"));
+        assertTrue(summary, summary.contains("| omitted: soc,speed,"));
+    }
 }
