@@ -6,6 +6,8 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationListener;
@@ -16,7 +18,11 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
+import android.Manifest;
+
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.ServiceCompat;
+import androidx.core.content.ContextCompat;
 
 import com.evsuite.hardware.EVHardware;
 
@@ -107,6 +113,8 @@ public class AbrpUploadService extends Service {
     private final ChargeMeter    chargeMeter    = new ChargeMeter();
     private volatile UploadSettings settings = UploadSettings.defaults();
     /** False while no GPS subscription is delivering — drives the watchdog re-arm. */
+    /** What the foreground notification currently says, so re-asserting it does not blank it. */
+    private volatile String lastStatus = "Starting…";
     private volatile boolean locationUpdatesActive = false;
     private volatile long lastLocationRequestMs = 0L;
 
@@ -127,7 +135,7 @@ public class AbrpUploadService extends Service {
         });
 
         createNotificationChannel();
-        startForeground(NOTIF_ID, buildNotification("Starting…"));
+        startInForeground();
         running = true;
         prefs.edit().putBoolean("service_running", true).apply();
 
@@ -158,7 +166,43 @@ public class AbrpUploadService extends Service {
             stopSelf();
             return START_NOT_STICKY;
         }
+        // Re-asserted on every start: a position grant that arrives after the service is up
+        // changes which foreground types it may hold, and the activity starts it again as
+        // soon as the user answers. Without this the grant only took effect at the next boot.
+        startInForeground();
         return START_STICKY;
+    }
+
+    /**
+     * Enters the foreground holding only the service types this app currently has the
+     * permissions for.
+     *
+     * The service declares {@code foregroundServiceType="location"}, and since API 34 the
+     * platform validates every declared type against what is held at the moment
+     * startForeground runs — the plain two-argument call claims them all. On a car where
+     * position had not been granted yet (a fresh install, or the boot receiver starting the
+     * service before the app was ever opened) that threw a SecurityException and the uploader
+     * died before its first tick. Without the permission the service still runs and still
+     * uploads; it simply has no position to send, exactly as before.
+     */
+    private void startInForeground() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+            // Service types do not exist before API 29: nothing is declared and nothing is
+            // checked, so the plain call is the only correct one there.
+            startForeground(NOTIF_ID, buildNotification(lastStatus));
+            return;
+        }
+        int types = hasLocationPermission()
+                ? ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                : ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE;
+        ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(lastStatus), types);
+    }
+
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                        == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                        == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -542,6 +586,7 @@ public class AbrpUploadService extends Service {
     }
 
     private void updateNotification(String status) {
+        lastStatus = status;
         getSystemService(NotificationManager.class).notify(NOTIF_ID, buildNotification(status));
     }
 }

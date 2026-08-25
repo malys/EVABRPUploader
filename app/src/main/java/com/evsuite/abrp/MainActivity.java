@@ -223,8 +223,12 @@ public class MainActivity extends AppCompatActivity {
         boolean haveCreds = !securePrefs.getString(SecurePrefs.KEY_TOKEN, "").trim().isEmpty()
                          && !securePrefs.getString(SecurePrefs.KEY_API_KEY, "").trim().isEmpty();
         if (enabled && haveCreds) {
-            startForegroundService(new Intent(this, AbrpUploadService.class));
+            // Asked for first, and deliberately: the service declares the `location`
+            // foreground type, and since API 34 starting it without the permission behind
+            // that type is a SecurityException in its own onCreate. Started this way round,
+            // the very first launch after an install could never bring the uploader up.
             requestLocationPermissionIfNeeded();
+            startForegroundService(new Intent(this, AbrpUploadService.class));
         }
 
         abrpPane.findViewById(R.id.save_button).setOnClickListener(v -> saveCredentials());
@@ -675,11 +679,30 @@ public class MainActivity extends AppCompatActivity {
             "android.car.permission.CAR_SPEED",
             "android.car.permission.CAR_ENERGY",
             "android.car.permission.CAR_ENERGY_PORTS",
+            // Outside temperature and cabin temperature: declared and read since 2.1.0, but
+            // never asked for, so both came back unreadable and were dropped from every
+            // payload on a car that would have answered them.
+            "android.car.permission.CAR_EXTERIOR_ENVIRONMENT",
+            "android.car.permission.CONTROL_CAR_CLIMATE",
     };
+
+    /**
+     * Asked for alongside the telemetry permissions from API 33, and separately because a
+     * denial costs something different: the foreground notification is the only status this
+     * service has, and without this it is dropped silently while the service runs on.
+     */
+    private static String[] runtimePermissions() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+            return RUNTIME_PERMISSIONS;
+        }
+        String[] all = java.util.Arrays.copyOf(RUNTIME_PERMISSIONS, RUNTIME_PERMISSIONS.length + 1);
+        all[RUNTIME_PERMISSIONS.length] = Manifest.permission.POST_NOTIFICATIONS;
+        return all;
+    }
 
     private void requestLocationPermissionIfNeeded() {
         java.util.List<String> missing = new java.util.ArrayList<>();
-        for (String p : RUNTIME_PERMISSIONS) {
+        for (String p : runtimePermissions()) {
             if (ContextCompat.checkSelfPermission(this, p)
                     != PackageManager.PERMISSION_GRANTED) {
                 missing.add(p);
@@ -712,6 +735,13 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 carDataDenied = true;
             }
+        }
+
+        // A grant that arrives after the service is already up changes which foreground
+        // types it may hold, and which properties it may read. Starting it again is what
+        // applies both without waiting for the next boot.
+        if (prefs.getBoolean("service_enabled", false)) {
+            startForegroundService(new Intent(this, AbrpUploadService.class));
         }
 
         if (locationDenied && carDataDenied) {

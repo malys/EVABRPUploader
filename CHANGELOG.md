@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2026-08-25
+
+### Fixed
+
+- **The uploader starts on a car that has not granted position yet.** The service declares the
+  `location` foreground type, and since Android 14 every declared type is checked against the
+  permissions held at the moment it enters the foreground — so a fresh install, or a boot
+  before the app had ever been opened, killed the service in its own `onCreate` before the
+  first tick. The type is now claimed only while the permission behind it is held, and the
+  activity asks for the permission *before* starting the service rather than after.
+- **Outside and cabin temperature reach ABRP again.** Both were declared and read since 2.1.0
+  but never requested at runtime, so both properties answered as unreadable and were dropped
+  from every payload.
+- **The service notification is visible.** `POST_NOTIFICATIONS` was declared and never asked
+  for; the only status the service has was being dropped silently on Android 13 and later.
+- A permission granted while the service is already running now takes effect at once instead
+  of at the next boot.
+
 ## [2.1.1] - 2026-08-23
 
 ### Fixed
