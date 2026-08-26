@@ -132,8 +132,11 @@ final class TelemetryPayload {
     /**
      * True for a temperature that a sensor could actually have measured. Excludes exactly
      * 0.0, which is what an unimplemented VHAL property returns — see cabin_temp above.
+     *
+     * Package-private because the service asks the same question before deciding whether to
+     * look for an outside temperature somewhere other than the car.
      */
-    private static boolean isPlausibleTemp(Float celsius) {
+    static boolean isPlausibleTemp(Float celsius) {
         return celsius != null && celsius > -50f && celsius < 80f && celsius != 0f;
     }
 

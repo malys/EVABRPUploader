@@ -26,6 +26,7 @@ import androidx.core.app.ServiceCompat;
 import androidx.core.content.ContextCompat;
 
 import com.evsuite.hardware.EVHardware;
+import com.evsuite.hardware.saic.SaicWeather;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -99,6 +100,14 @@ public class AbrpUploadService extends Service {
      * stopped producing (garage, tunnel) and position is genuinely unknown.
      */
     private static final long   MIN_LOCATION_MAX_AGE_MS = 5 * 60 * 1000L;
+    /**
+     * How long a weather reading stands in for the car's own thermometer.
+     *
+     * The query can reach the network from inside the head unit and blocks the upload thread
+     * while it does, so it is not something to do every tick. Outside air does not move fast
+     * enough for ten minutes to matter to a consumption model.
+     */
+    private static final long   WEATHER_TTL_MS = 10 * 60 * 1000L;
 
     // Set from the main thread (LocationListener uses Main looper), read from
     // the scheduler thread inside doUpload. volatile is sufficient since Location
@@ -129,6 +138,9 @@ public class AbrpUploadService extends Service {
     private volatile String lastStatus = "Starting…";
     private volatile boolean locationUpdatesActive = false;
     private volatile long lastLocationRequestMs = 0L;
+    /** Last head-unit weather reading and when it was taken — see {@link #WEATHER_TTL_MS}. */
+    private volatile SaicWeather.Reading lastWeather = null;
+    private volatile long lastWeatherMs = 0L;
 
     // ---------- Lifecycle ----------
 
@@ -157,6 +169,11 @@ public class AbrpUploadService extends Service {
         // reads stay on CarPropertyAdapter — EVHardware has no EV-battery abstraction and
         // those IDs are confirmed for SWI68 only (see FIRMWARE.md).
         EVHardware.INSTANCE.init(getApplicationContext());
+        // The head unit's own weather service, bound for one reason: ENV_OUTSIDE_TEMPERATURE
+        // is not implemented on this vehicle, so the car cannot say how warm it is outside
+        // and something else has to. Idempotent, asynchronous, and absent on a car that does
+        // not have the map stack — in which case ext_temp simply stays unreported.
+        SaicWeather.INSTANCE.connect(getApplicationContext());
 
         connectCarAdapter();
         requestLocationUpdates();
@@ -426,6 +443,19 @@ public class AbrpUploadService extends Service {
 
         Location loc = freshLocation();
 
+        // ext_temp was reaching ABRP as 0 degC, and omitting the unreadable value only turned
+        // that into ABRP's own default 0. The car is the problem: this VHAL does not implement
+        // ENV_OUTSIDE_TEMPERATURE, so there is no vehicle reading to correct. The head unit's
+        // weather service answers for a position, and ambient air at the car is what ext_temp
+        // means — a better figure than a bumper sensor in the sun would give anyway.
+        SaicWeather.Reading sky = null;
+        if (!TelemetryPayload.isPlausibleTemp(extTemp)) {
+            sky = weatherAt(loc);
+            if (sky != null && sky.getTemperatureCelsius() != null) {
+                extTemp = sky.getTemperatureCelsius().floatValue();
+            }
+        }
+
         TelemetryPayload tlm = new TelemetryPayload(System.currentTimeMillis() / 1000);
         tlm.soc           = soc;
         tlm.speedKmh      = speedKmh;
@@ -456,12 +486,53 @@ public class AbrpUploadService extends Service {
         }
 
         String tlmJson = tlm.build();
-        // What actually went on the wire, so a value that looks wrong on the ABRP side can
-        // be traced back to the read that produced it — or to the read that did not.
-        Log.i(TAG, "TLM " + TelemetryPayload.summarize(tlmJson)
-                + (loc == null ? "" : " (fix age " + locationAgeMs(loc) / 1000 + "s)"));
+        String summary = TelemetryPayload.summarize(tlmJson);
+        if (loc != null) {
+            summary += " (fix " + locationAgeMs(loc) / 1000 + "s old"
+                    + " +/-" + (loc.hasAccuracy() ? Math.round(loc.getAccuracy()) + "m" : "?")
+                    + " via " + loc.getProvider();
+            // The weather service names the place it answered for. ABRP shows an address it
+            // reverse-geocodes from the same coordinates, so the two disagreeing says the
+            // coordinates are wrong, and the two agreeing says ABRP is showing something old.
+            if (sky != null && !sky.getCity().isEmpty()) summary += ", near " + sky.getCity();
+            summary += ")";
+        }
+        // What actually went on the wire. Kept on the log entry as well as in logcat: the
+        // head unit this runs on has no adb attached, so the in-app log is the only place
+        // the driver can see it.
+        Log.i(TAG, "TLM " + summary);
 
-        sendToAbrp(apiKey, token, tlmJson, soc, speedKmh, carUp);
+        sendToAbrp(apiKey, token, tlmJson, summary, soc, speedKmh, carUp);
+    }
+
+    /**
+     * Current conditions where the car is, or null when nothing can answer.
+     *
+     * Cached for {@link #WEATHER_TTL_MS}: the query blocks the upload thread on what may be a
+     * network round-trip inside the head unit, and it is asked on every upload the car's own
+     * thermometer cannot answer — which, on this vehicle, is all of them. A stale reading is
+     * kept when a refresh fails, since ten-minute-old air is a better answer than none.
+     */
+    private SaicWeather.Reading weatherAt(Location loc) {
+        if (loc == null) return null;
+        long now = System.currentTimeMillis();
+        SaicWeather.Reading cached = lastWeather;
+        if (cached != null && now - lastWeatherMs < WEATHER_TTL_MS) return cached;
+        if (!SaicWeather.INSTANCE.isAvailable()) return cached;
+        SaicWeather.Reading reading = SaicWeather.INSTANCE.currentAt(
+                loc.getLatitude(), loc.getLongitude(), weatherLanguage());
+        if (reading == null) return cached;
+        lastWeather = reading;
+        lastWeatherMs = now;
+        return reading;
+    }
+
+    /** The provider answers in the language it is asked in; the driver's is the right one. */
+    private static String weatherLanguage() {
+        java.util.Locale locale = java.util.Locale.getDefault();
+        String language = locale.getLanguage().toLowerCase(java.util.Locale.US);
+        String country = locale.getCountry().toLowerCase(java.util.Locale.US);
+        return country.isEmpty() ? language : language + "-" + country;
     }
 
     /** One wheel's pressure in kPa, or null when that wheel has no readable sensor. */
@@ -471,7 +542,7 @@ public class AbrpUploadService extends Service {
         return adapter.getFloatProperty(CarPropertyAdapter.PROP_TIRE_PRESSURE, wheelArea);
     }
 
-    private void sendToAbrp(String apiKey, String token, String tlmJson,
+    private void sendToAbrp(String apiKey, String token, String tlmJson, String summary,
                             Integer soc, Float speedKmh, boolean carUp) {
         try {
             AbrpApi.Response response = AbrpApi.send(apiKey, token, tlmJson);
@@ -481,7 +552,7 @@ public class AbrpUploadService extends Service {
             if (BuildConfig.DEBUG) Log.d(TAG, "ABRP [" + code + "]: " + response.body);
 
             uploadLog.record(new UploadLog.Entry(System.currentTimeMillis(), code,
-                    code == 200, code == 200 ? "OK" : ("HTTP " + code)));
+                    code == 200, code == 200 ? "OK" : ("HTTP " + code), summary));
 
             if (code == 200) {
                 lastSuccessfulUploadMs = System.currentTimeMillis();
@@ -506,13 +577,13 @@ public class AbrpUploadService extends Service {
         } catch (java.net.UnknownHostException e) {
             // httpStatus 0: the request never reached a server.
             uploadLog.record(new UploadLog.Entry(
-                    System.currentTimeMillis(), 0, false, "No internet"));
+                    System.currentTimeMillis(), 0, false, "No internet", summary));
             prefs.edit().putString("last_upload_status", "No internet").apply();
             updateNotification("Offline — will retry");
         } catch (Exception e) {
             Log.e(TAG, "Upload failed", e);
             uploadLog.record(new UploadLog.Entry(System.currentTimeMillis(), 0, false,
-                    e.getClass().getSimpleName()));
+                    e.getClass().getSimpleName(), summary));
             prefs.edit().putString("last_upload_status",
                     e.getClass().getSimpleName() + ": " + e.getMessage()).apply();
         }
@@ -563,8 +634,15 @@ public class AbrpUploadService extends Service {
      * it came from the future — or from hours ago — the moment that correction lands.
      */
     private static long locationAgeMs(Location loc) {
-        return (SystemClock.elapsedRealtimeNanos() - loc.getElapsedRealtimeNanos())
-                / 1_000_000L;
+        long fixNanos = loc.getElapsedRealtimeNanos();
+        // A provider that does not stamp the monotonic clock leaves this at zero, which would
+        // date every fix to the last boot and drop all of them — turning a staleness guard
+        // into a position blackout. An unstamped fix is one whose age cannot be known, and
+        // guessing "ancient" there is the worse of the two guesses.
+        if (fixNanos <= 0L) return 0L;
+        long ageMs = (SystemClock.elapsedRealtimeNanos() - fixNanos) / 1_000_000L;
+        // A fix from the future is a clock that moved, not a fix worth dropping.
+        return Math.max(ageMs, 0L);
     }
 
     /** Several subscription intervals, so a single missed fix never blanks the position. */

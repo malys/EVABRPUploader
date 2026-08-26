@@ -38,12 +38,26 @@ final class UploadLog {
         final boolean success;
         /** Short human-readable reason, e.g. "OK", "No internet", "HTTP 401". */
         final String detail;
+        /**
+         * What the payload actually contained — see TelemetryPayload.summarize(). Null for
+         * an attempt recorded before a payload existed.
+         *
+         * This is the whole point of the log for anything other than "is it uploading":
+         * a value that looks wrong on the ABRP side is either a field this app never sent,
+         * or one it sent with the wrong number in it, and nothing else distinguishes them.
+         */
+        final String summary;
 
         Entry(long timestampMs, int httpStatus, boolean success, String detail) {
+            this(timestampMs, httpStatus, success, detail, null);
+        }
+
+        Entry(long timestampMs, int httpStatus, boolean success, String detail, String summary) {
             this.timestampMs = timestampMs;
             this.httpStatus = httpStatus;
             this.success = success;
             this.detail = detail;
+            this.summary = summary;
         }
     }
 

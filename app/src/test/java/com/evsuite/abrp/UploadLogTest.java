@@ -151,4 +151,14 @@ public class UploadLogTest {
         assertTrue(done.await(30, TimeUnit.SECONDS));
         assertEquals(UploadLog.MAX_ENTRIES, log.recent().size());
     }
+
+    @Test
+    public void entryCarriesThePayloadSummaryAndDefaultsItToNull() {
+        UploadLog log = new UploadLog();
+        log.record(new UploadLog.Entry(1L, 200, true, "OK", "soc=63 | omitted: lat,lon"));
+        log.record(new UploadLog.Entry(2L, 0, false, "No internet"));
+        java.util.List<UploadLog.Entry> recent = log.recent();
+        assertNull(recent.get(0).summary);
+        assertEquals("soc=63 | omitted: lat,lon", recent.get(1).summary);
+    }
 }

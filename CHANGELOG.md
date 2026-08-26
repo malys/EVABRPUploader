@@ -4,6 +4,34 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.5] - 2026-08-26
+
+### Fixed
+
+- **`ext_temp` reached ABRP as 0 degC, and 2.1.4 did not change that.** Guarding the value only
+  stopped the app sending a zero; ABRP shows 0 for an absent `ext_temp` too, so the symptom was
+  identical. The cause is the car: this VHAL does not implement `ENV_OUTSIDE_TEMPERATURE`, so
+  there was never a vehicle reading to correct. The outside temperature now comes from the head
+  unit's own weather service (`com.saicmotor.mapservice`, already bound by EVTasker through
+  `SaicWeather`), queried for the car's position and cached for 10 minutes — the query can reach
+  the network from inside the head unit and it blocks the upload thread while it does. The
+  vehicle sensor is still preferred whenever a car does implement it.
+- **A GPS fix could be dropped for being stale when its age was never knowable.** 2.1.4 aged
+  fixes on the monotonic clock, but a provider that does not stamp `getElapsedRealtimeNanos()`
+  leaves it at zero, which dated every fix to the last boot and would have discarded all of
+  them — a staleness guard turning into a position blackout. An unstamped fix is now kept, and
+  a fix from a clock that jumped forward is no longer aged negatively.
+
+### Added
+
+- **The payload summary is in the app's Log tab, not only in logcat.** 2.1.4 put it where a car
+  with no adb attached cannot show it. Each attempt now carries the fields it sent and the ones
+  it left out, which is the only thing that separates "ABRP shows 0" from "the app sent 0".
+- **Position diagnostics on each entry:** the fix's age, its accuracy, the provider that
+  supplied it, and the place name the weather service answered for. ABRP reverse-geocodes the
+  address it displays from the same coordinates, so a place name that disagrees with it means
+  the coordinates are wrong, and one that agrees means ABRP is showing something older.
+
 ## [2.1.4] - 2026-08-25
 
 ### Fixed

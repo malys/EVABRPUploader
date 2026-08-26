@@ -55,7 +55,7 @@ unit and talks to ABRP directly.
 | State of charge | SWI68 vendor EV property (`CarPropertyAdapter`) | SWI68 only |
 | Range | SWI68 vendor EV property, falling back to standard AAOS `RANGE_REMAINING` | all supported (vendor first) |
 | Speed, parked state | `EVHardware` (per-generation) | all supported |
-| Outside temperature | `EVHardware` (standard AAOS) | all supported |
+| Outside temperature | `EVHardware` (standard AAOS), falling back to the head unit's weather service | all supported (the vehicle sensor is absent on MG4) |
 | Charging, DC fast charging | Charge port state + charge rate heuristic | where the VHAL implements them |
 | Charged energy this session | Charge rate integrated over the session | where the charge rate is readable |
 | State of energy, pack capacity, pack temperature | Standard AAOS EV properties | where the VHAL implements them |

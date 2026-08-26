@@ -615,6 +615,12 @@ public class MainActivity extends AppCompatActivity {
               .append(entry.httpStatus > 0 ? String.valueOf(entry.httpStatus) : "---")
               .append("  ")
               .append(entry.detail);
+            // What the payload held, under the attempt it belongs to. This is the only view
+            // of it the driver has: the car runs no adb, so "the field is 0 on ABRP" and
+            // "the app never sent the field" look identical from the outside without it.
+            if (entry.summary != null && !entry.summary.isEmpty()) {
+                sb.append("\n    ").append(entry.summary);
+            }
         }
         callLogText.setText(sb.toString());
     }
