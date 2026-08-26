@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.8] - 2026-08-26
+
+### Fixed
+
+- **The weather answers arrived all along; they were being thrown away.** EVHardware read the
+  reply parcel one int too early — a nullable parcelable argument is written as a presence flag
+  and then the object, so every field landed in the next one's place, the payload's type tag
+  never matched, and a reading that had arrived was reported as unreadable. That is precisely
+  the `map=bound` with nothing behind it that 2.1.7 timed the query to explain. Tracking
+  EVHardware 1.6.0 fixes it, and `ext_temp` has a working source that does not depend on
+  catching a broadcast at the right moment.
+
 ## [2.1.7] - 2026-08-26
 
 ### Fixed
