@@ -4,6 +4,35 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.6] - 2026-08-26
+
+### Fixed
+
+- **`ext_temp` was still absent: the weather service 2.1.5 added never bound.** The log added in
+  that release is what showed it — every upload listed `ext_temp` among the omitted fields, with
+  no place name beside the fix. Meanwhile the head unit's own status bar shows a temperature
+  continuously, and it does not get it from that service: it gets it from a broadcast. The
+  uploader now listens for the same one (`com.saicmotor.weather`) and prefers it, falling back
+  to the map service query and, before either, to the vehicle sensor on a car that has one.
+
+  The payload's shape is unverified, so it is read by searching for any key that names a
+  temperature at any depth rather than by a fixed layout, in either unit, whether the value
+  arrives as a number or as a string. A parser written against a guessed layout fails silently
+  and looks exactly like the bug it was meant to fix.
+
+### Added
+
+- **The temperature's source, on every log entry** — `[temp car]`, `[temp bcast:Toulouse]`,
+  `[temp map:...]`, or when nothing answered, why each one did not: `[temp none bcast=no
+  broadcast yet map=unbound]`. A payload that arrives but carries no readable temperature is
+  reported with a sample of what it did carry, which is what a fixed parser would have hidden.
+
+### Notes
+
+- Position is not the problem, and the log settled it: fixes arrive from the `fused` provider,
+  accurate to about a metre and seconds old, with the coordinates the car is actually at. An
+  address that looks wrong on ABRP is not coming from what this app sends.
+
 ## [2.1.5] - 2026-08-26
 
 ### Fixed

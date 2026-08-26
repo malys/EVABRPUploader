@@ -5,10 +5,13 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
-import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -141,6 +144,14 @@ public class AbrpUploadService extends Service {
     /** Last head-unit weather reading and when it was taken — see {@link #WEATHER_TTL_MS}. */
     private volatile SaicWeather.Reading lastWeather = null;
     private volatile long lastWeatherMs = 0L;
+    /** The head unit's own weather broadcast — the source its status bar uses. */
+    private final HeadUnitWeather headUnitWeather = new HeadUnitWeather();
+    private final BroadcastReceiver weatherReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            headUnitWeather.accept(intent);
+        }
+    };
+    private volatile boolean weatherReceiverRegistered = false;
 
     // ---------- Lifecycle ----------
 
@@ -174,6 +185,7 @@ public class AbrpUploadService extends Service {
         // and something else has to. Idempotent, asynchronous, and absent on a car that does
         // not have the map stack — in which case ext_temp simply stays unreported.
         SaicWeather.INSTANCE.connect(getApplicationContext());
+        registerWeatherReceiver();
 
         connectCarAdapter();
         requestLocationUpdates();
@@ -244,6 +256,10 @@ public class AbrpUploadService extends Service {
         if (carAdapter != null) carAdapter.disconnect();
         if (locationManager != null) {
             try { locationManager.removeUpdates(locationListener); } catch (Exception ignored) {}
+        }
+        if (weatherReceiverRegistered) {
+            try { unregisterReceiver(weatherReceiver); } catch (Exception ignored) {}
+            weatherReceiverRegistered = false;
         }
         if (mainHandler != null) mainHandler.removeCallbacksAndMessages(null);
         running = false;
@@ -448,11 +464,28 @@ public class AbrpUploadService extends Service {
         // ENV_OUTSIDE_TEMPERATURE, so there is no vehicle reading to correct. The head unit's
         // weather service answers for a position, and ambient air at the car is what ext_temp
         // means — a better figure than a bumper sensor in the sun would give anyway.
+        String tempSource = "car";
         SaicWeather.Reading sky = null;
         if (!TelemetryPayload.isPlausibleTemp(extTemp)) {
-            sky = weatherAt(loc);
-            if (sky != null && sky.getTemperatureCelsius() != null) {
-                extTemp = sky.getTemperatureCelsius().floatValue();
+            // The broadcast first. It is what fills the head unit's own status bar, so on this
+            // car it is the source known to be producing a number, where the map service's
+            // query never even bound.
+            Float broadcast = headUnitWeather.temperatureC();
+            if (TelemetryPayload.isPlausibleTemp(broadcast)) {
+                extTemp = broadcast;
+                tempSource = "bcast:" + headUnitWeather.diagnostic();
+            } else {
+                sky = weatherAt(loc);
+                if (sky != null && sky.getTemperatureCelsius() != null) {
+                    extTemp = sky.getTemperatureCelsius().floatValue();
+                    tempSource = "map:" + sky.getCity();
+                } else {
+                    // Neither answered. Which one failed, and how, is the difference between
+                    // "the broadcast never arrives" and "it arrives in a shape this cannot
+                    // read" — and nothing on the ABRP side tells them apart.
+                    tempSource = "none bcast=" + headUnitWeather.diagnostic()
+                            + " map=" + (SaicWeather.INSTANCE.isAvailable() ? "bound" : "unbound");
+                }
             }
         }
 
@@ -486,7 +519,7 @@ public class AbrpUploadService extends Service {
         }
 
         String tlmJson = tlm.build();
-        String summary = TelemetryPayload.summarize(tlmJson);
+        String summary = TelemetryPayload.summarize(tlmJson) + " [temp " + tempSource + "]";
         if (loc != null) {
             summary += " (fix " + locationAgeMs(loc) / 1000 + "s old"
                     + " +/-" + (loc.hasAccuracy() ? Math.round(loc.getAccuracy()) + "m" : "?")
@@ -503,6 +536,27 @@ public class AbrpUploadService extends Service {
         Log.i(TAG, "TLM " + summary);
 
         sendToAbrp(apiKey, token, tlmJson, summary, soc, speedKmh, carUp);
+    }
+
+    /**
+     * Listens for the head unit's weather updates.
+     *
+     * Exported on purpose: the broadcast comes from another application, and a receiver
+     * declared not-exported would never hear it. The flag is required from API 33 and does
+     * not exist before it — the car this runs on is API 28 — so the registration goes
+     * through ContextCompat, which picks the right overload for the platform underneath.
+     */
+    private void registerWeatherReceiver() {
+        try {
+            androidx.core.content.ContextCompat.registerReceiver(
+                    this, weatherReceiver, new IntentFilter(HeadUnitWeather.ACTION),
+                    androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
+            weatherReceiverRegistered = true;
+        } catch (Exception e) {
+            // A car whose weather app broadcasts nothing is a car without ext_temp, not a
+            // reason to lose the upload service.
+            Log.w(TAG, "Weather broadcast unavailable: " + e.getMessage());
+        }
     }
 
     /**
