@@ -63,13 +63,28 @@ final class HeadUnitWeather {
      * are indistinguishable from the ABRP side.
      */
     String diagnostic() {
-        if (temperatureC != null) return place.isEmpty() ? "ok" : place;
-        return problem;
+        if (temperatureC == null) return problem;
+        String age = (System.currentTimeMillis() - receivedMs) / 60000 + "min";
+        return (place.isEmpty() ? "ok" : place) + "/" + age;
     }
 
     /** Reads whatever the head unit just broadcast. Never throws: this runs in a receiver. */
     void accept(Intent intent) {
+        if (intent == null) {
+            // Only reached from the sticky probe, which answers null when the platform is
+            // holding no such broadcast. Says nothing about whether one will ever be sent.
+            if (temperatureC == null) problem = "none held, none sent yet";
+            return;
+        }
         acceptPayload(payloadOf(intent));
+    }
+
+    /** Restores the last reading across a restart — see the service's prefs. */
+    void restore(float celsius, String named, long whenMs) {
+        temperatureC = celsius;
+        place = named == null ? "" : named;
+        receivedMs = whenMs;
+        problem = null;
     }
 
     /**

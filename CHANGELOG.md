@@ -4,6 +4,30 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.7] - 2026-08-26
+
+### Fixed
+
+- **The weather broadcast is real but rare, and the app forgot it between restarts.** The action
+  is confirmed: the head unit's weather app sends `com.saicmotor.weather` when *it* refreshes,
+  not on any cadence this app can ask for. 2.1.6 listened and gave up between refreshes, and the
+  app is restarted every time the driver opens it to look at the log — which is the worst moment
+  to start waiting. The last reading is now kept across restarts for two hours, and the platform
+  is asked at start-up and on every temperature-less upload for a held broadcast, which costs
+  nothing and answers immediately if the weather app sends its update sticky.
+
+### Changed
+
+- **`map=bound` in 2.1.6 corrected the release note that shipped with it.** That release said the
+  map service never bound; the log showed the binder alive and the *query* returning nothing,
+  which is a different failure with a different fix. The map query is now timed, and the elapsed
+  time appears in the log — the query is bounded by a two-second wait inside EVHardware, so a
+  null returning at once was refused or answered undecodably while a null returning at the bound
+  is a service that did not answer in time. Nothing outside the library distinguishes them, and
+  guessing which one it was is what produced the wrong note.
+- The broadcast reading now carries its age in the log (`bcast=Toulouse/12min`): where a value
+  came from does not say whether it still describes the day.
+
 ## [2.1.6] - 2026-08-26
 
 ### Fixed

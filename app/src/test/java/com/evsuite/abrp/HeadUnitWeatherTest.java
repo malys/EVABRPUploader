@@ -24,7 +24,9 @@ public class HeadUnitWeatherTest {
                         + "\"address\":\"Toulouse\",\"conditionType\":1}}"));
         assertEquals(27f, weather.temperatureC(), 0.01f);
         assertEquals("Toulouse", weather.place());
-        assertEquals("Toulouse", weather.diagnostic());
+        // The diagnostic carries the reading's age: a broadcast arrives when the weather app
+        // refreshes, so "where from" without "how long ago" does not say whether to trust it.
+        assertEquals("Toulouse/0min", weather.diagnostic());
     }
 
     @Test
@@ -87,5 +89,21 @@ public class HeadUnitWeatherTest {
         weather.acceptPayload(("{not json at all"));
         assertNull(weather.temperatureC());
         assertTrue(weather.diagnostic(), weather.diagnostic().contains("reading broadcast"));
+    }
+
+    @Test
+    public void aRestoredReadingIsReportedWithItsAge() {
+        HeadUnitWeather weather = new HeadUnitWeather();
+        weather.restore(19.5f, "Toulouse", System.currentTimeMillis() - 45 * 60 * 1000L);
+        assertEquals(19.5f, weather.temperatureC(), 0.01f);
+        assertEquals("Toulouse/45min", weather.diagnostic());
+    }
+
+    @Test
+    public void anAbsentStickyBroadcastIsNotMistakenForAFailedParse() {
+        HeadUnitWeather weather = new HeadUnitWeather();
+        weather.accept(null);
+        assertNull(weather.temperatureC());
+        assertEquals("none held, none sent yet", weather.diagnostic());
     }
 }

@@ -111,6 +111,18 @@ public class AbrpUploadService extends Service {
      * enough for ten minutes to matter to a consumption model.
      */
     private static final long   WEATHER_TTL_MS = 10 * 60 * 1000L;
+    /**
+     * How long a broadcast temperature keeps standing in for the car's thermometer.
+     *
+     * The weather app broadcasts when it refreshes itself, not on a cadence this app can ask
+     * for, so a reading has to outlive the moment it arrived or it would be useless between
+     * refreshes. Two hours is long enough to bridge them and short enough that the value has
+     * not stopped describing the day.
+     */
+    private static final long   WEATHER_MAX_AGE_MS = 2 * 60 * 60 * 1000L;
+    private static final String KEY_WEATHER_TEMP  = "weather_temp_c";
+    private static final String KEY_WEATHER_PLACE = "weather_place";
+    private static final String KEY_WEATHER_MS    = "weather_received_ms";
 
     // Set from the main thread (LocationListener uses Main looper), read from
     // the scheduler thread inside doUpload. volatile is sufficient since Location
@@ -149,9 +161,12 @@ public class AbrpUploadService extends Service {
     private final BroadcastReceiver weatherReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             headUnitWeather.accept(intent);
+            saveWeather();
         }
     };
     private volatile boolean weatherReceiverRegistered = false;
+    /** How long the last map-service query took, or -1 when it was never made. */
+    private volatile long lastQueryMs = -1L;
 
     // ---------- Lifecycle ----------
 
@@ -470,7 +485,10 @@ public class AbrpUploadService extends Service {
             // The broadcast first. It is what fills the head unit's own status bar, so on this
             // car it is the source known to be producing a number, where the map service's
             // query never even bound.
-            Float broadcast = headUnitWeather.temperatureC();
+            // The broadcast arrives when the weather app feels like it, so a reading that
+            // never came is retried here rather than only at start-up.
+            if (headUnitWeather.temperatureC() == null) probeStickyWeather();
+            Float broadcast = weatherIsFresh() ? headUnitWeather.temperatureC() : null;
             if (TelemetryPayload.isPlausibleTemp(broadcast)) {
                 extTemp = broadcast;
                 tempSource = "bcast:" + headUnitWeather.diagnostic();
@@ -484,7 +502,8 @@ public class AbrpUploadService extends Service {
                     // "the broadcast never arrives" and "it arrives in a shape this cannot
                     // read" — and nothing on the ABRP side tells them apart.
                     tempSource = "none bcast=" + headUnitWeather.diagnostic()
-                            + " map=" + (SaicWeather.INSTANCE.isAvailable() ? "bound" : "unbound");
+                            + " map=" + (SaicWeather.INSTANCE.isAvailable() ? "bound" : "unbound")
+                            + (lastQueryMs < 0 ? "" : "/" + lastQueryMs + "ms");
                 }
             }
         }
@@ -547,16 +566,64 @@ public class AbrpUploadService extends Service {
      * through ContextCompat, which picks the right overload for the platform underneath.
      */
     private void registerWeatherReceiver() {
+        restoreWeather();
         try {
             androidx.core.content.ContextCompat.registerReceiver(
                     this, weatherReceiver, new IntentFilter(HeadUnitWeather.ACTION),
                     androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
             weatherReceiverRegistered = true;
+            // A null receiver asks the platform for the last broadcast it is holding without
+            // subscribing to anything. If the weather app sends its update sticky, this is the
+            // reading straight away rather than after however long until its next refresh —
+            // and the app is started to look at the log, which is exactly the wrong moment to
+            // begin waiting.
+            probeStickyWeather();
         } catch (Exception e) {
             // A car whose weather app broadcasts nothing is a car without ext_temp, not a
             // reason to lose the upload service.
             Log.w(TAG, "Weather broadcast unavailable: " + e.getMessage());
         }
+    }
+
+    /** Asks for the last held broadcast, if the platform is holding one. Harmless when not. */
+    private void probeStickyWeather() {
+        try {
+            headUnitWeather.accept(
+                    registerReceiver(null, new IntentFilter(HeadUnitWeather.ACTION)));
+            saveWeather();
+        } catch (Exception e) {
+            Log.w(TAG, "Sticky weather probe failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Keeps the last reading across a restart.
+     *
+     * The broadcast arrives when the weather app refreshes, so a service that forgets on every
+     * start would spend most of its life with no temperature at all — and the app is restarted
+     * every time the driver opens it.
+     */
+    private void saveWeather() {
+        Float celsius = headUnitWeather.temperatureC();
+        if (celsius == null) return;
+        prefs.edit()
+                .putFloat(KEY_WEATHER_TEMP, celsius)
+                .putString(KEY_WEATHER_PLACE, headUnitWeather.place())
+                .putLong(KEY_WEATHER_MS, headUnitWeather.receivedMs())
+                .apply();
+    }
+
+    private void restoreWeather() {
+        long whenMs = prefs.getLong(KEY_WEATHER_MS, 0L);
+        if (whenMs <= 0L || System.currentTimeMillis() - whenMs > WEATHER_MAX_AGE_MS) return;
+        headUnitWeather.restore(prefs.getFloat(KEY_WEATHER_TEMP, 0f),
+                prefs.getString(KEY_WEATHER_PLACE, ""), whenMs);
+    }
+
+    /** True while the stored reading still describes the day — see {@link #WEATHER_MAX_AGE_MS}. */
+    private boolean weatherIsFresh() {
+        long whenMs = headUnitWeather.receivedMs();
+        return whenMs > 0L && System.currentTimeMillis() - whenMs <= WEATHER_MAX_AGE_MS;
     }
 
     /**
@@ -572,9 +639,15 @@ public class AbrpUploadService extends Service {
         long now = System.currentTimeMillis();
         SaicWeather.Reading cached = lastWeather;
         if (cached != null && now - lastWeatherMs < WEATHER_TTL_MS) return cached;
-        if (!SaicWeather.INSTANCE.isAvailable()) return cached;
+        if (!SaicWeather.INSTANCE.isAvailable()) { lastQueryMs = -1L; return cached; }
+        // How long the call took is the only thing that separates its failure modes from out
+        // here: the query is bounded by a two-second wait inside the library, so a null that
+        // comes back at once was refused or answered undecodably, and a null that comes back
+        // at the bound is a service that did not answer in time. The library reports neither.
+        long startedMs = System.currentTimeMillis();
         SaicWeather.Reading reading = SaicWeather.INSTANCE.currentAt(
                 loc.getLatitude(), loc.getLongitude(), weatherLanguage());
+        lastQueryMs = System.currentTimeMillis() - startedMs;
         if (reading == null) return cached;
         lastWeather = reading;
         lastWeatherMs = now;
