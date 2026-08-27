@@ -52,22 +52,22 @@ unit and talks to ABRP directly.
 ## Overview
 | Signal | Source | Firmwares |
 |---|---|---|
-| State of charge | SWI68 vendor EV property (`CarPropertyAdapter`) | SWI68 only |
-| Range | SWI68 vendor EV property, falling back to standard AAOS `RANGE_REMAINING` | all supported (vendor first) |
-| Speed, parked state | `EVHardware` (per-generation) | all supported |
+| State of charge | `EVHardware` vendor charging service, with a SWI68 property fallback | all supported (fallback SWI68 only) |
+| Range | `EVHardware` vendor charging service, standard AAOS property, then SWI68 fallback | all supported |
+| Speed, parked state | `EVHardware` shared energy snapshot | all supported |
 | Outside temperature | The head unit's weather broadcast, falling back to its map-service query; the vehicle sensor first where one exists | all supported (the vehicle sensor is absent on MG4) |
 | Charging, DC fast charging | Charge port state + charge rate heuristic | where the VHAL implements them |
-| Charged energy this session | Charge rate integrated over the session | where the charge rate is readable |
-| State of energy, pack capacity, pack temperature | Standard AAOS EV properties | where the VHAL implements them |
+| Charged energy this session | `EVHardware` charging-session integration | where the charge rate is readable |
+| State of energy, pack capacity, pack temperature | `EVHardware` typed standard-AAOS reads | where the VHAL implements them |
 | Odometer, tyre pressures | Standard AAOS properties (privileged) | platform-signed installs only |
-| Cabin temperature | HVAC property | where the VHAL implements it |
-| Climate setpoint | `EVHardware` (per-generation HVAC) | all supported |
+| Cabin temperature | `EVHardware` typed HVAC read | where the VHAL implements it |
+| Climate setpoint | `EVHardware` shared energy snapshot | all supported |
 | Position, elevation, heading | GPS | — |
 
-Firmware-agnostic signals go through **EVHardware**, which detects the generation
-(SWI68/69/131/132/133/165) and picks the right underlying API. SOC is the exception:
-EVHardware exposes no EV-battery abstraction, so it still uses a vendor ID confirmed on
-SWI68 and is read-supported on that generation only — see [`FIRMWARE.md`](FIRMWARE.md).
+All vehicle telemetry goes through **EVHardware**, which detects the generation
+(SWI68/69/131/132/133/165), owns property ids and units, and applies the shared nullable
+fallback order. `CarPropertyAdapter` remains only as transport for the debug-only VHAL probe
+and is never instantiated by the production service. See [`FIRMWARE.md`](FIRMWARE.md).
 
 Odometer and tyre pressures sit behind privileged AAOS permissions: a platform-signed
 install sends them, any other install simply omits them.
@@ -216,7 +216,8 @@ gitignored, or in GitHub Actions secrets.
 
 ## Project layout
 ```
-app/src/main      shared code: service, car adapter, telemetry, UI
+app/src/main      upload service, ABRP payload and UI
+EVHardware        shared vehicle reads, energy snapshot and integration
 app/src/stable    no-op update hook — the stable channel cannot self-update
 app/src/unstable  audited updater policy; runtime trigger currently suspended
 app/src/debug     VHAL probe tools, absent from every release build

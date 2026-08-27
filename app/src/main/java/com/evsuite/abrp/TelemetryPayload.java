@@ -105,7 +105,8 @@ final class TelemetryPayload {
                 tlm.put("soe", round2(soeKwh));
             }
             // 0.0 IS meaningful here — it is a charge session that has just begun — so
-            // this one is guarded on null only. ChargeMeter sends null between sessions.
+            // This one is guarded on null only. EVHardware's charging-session meter sends
+            // null between sessions.
             if (kwhCharged != null) {
                 tlm.put("kwh_charged", kwhCharged.doubleValue());
             }

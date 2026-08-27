@@ -31,11 +31,13 @@ jobs:
       - name: Run unit tests
         run: |
           chmod +x gradlew
-          ./gradlew testStableDebugUnitTest testUnstableDebugUnitTest --no-daemon
+          ./gradlew :evhardware:testDebugUnitTest testStableDebugUnitTest testUnstableDebugUnitTest --no-daemon
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-reports
-          path: app/build/reports/tests/
+          path: |
+            app/build/reports/tests/
+            EVHardware/lib/build/reports/tests/

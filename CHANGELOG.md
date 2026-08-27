@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Energy acquisition now consumes EVHardware's coherent `EnergySnapshot`; duplicate SOC,
+  range, power, temperature, odometer and charge property ids were removed from the app.
+- Charging-session integration and tyre-pressure reads moved to EVHardware. The local
+  car-property adapter is now unused by production and supports debug diagnostics only.
+
 ## [2.1.8] - 2026-08-26
 
 ### Fixed

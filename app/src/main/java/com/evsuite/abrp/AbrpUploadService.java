@@ -28,8 +28,11 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
 import androidx.core.content.ContextCompat;
 
-import com.evsuite.hardware.EVHardware;
 import com.evsuite.hardware.saic.SaicWeather;
+import com.evsuite.hardware.telemetry.EnergySnapshot;
+import com.evsuite.hardware.telemetry.EnergyTelemetryReader;
+import com.evsuite.hardware.telemetry.ChargingSessionMeter;
+import com.evsuite.hardware.telemetry.TirePressureSnapshot;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -42,12 +45,9 @@ import java.util.concurrent.TimeUnit;
  *  - Uses ScheduledExecutorService (not Handler chains) so exceptions inside one
  *    upload cycle cannot break the schedule. Even on a thrown RuntimeException
  *    the next tick still fires.
- *  - Uploads unconditionally: if the car adapter never connects we still emit
+ *  - Uploads unconditionally: if vehicle telemetry is unavailable we still emit
  *    GPS + timestamp so ABRP at least sees the vehicle online.
- *  - Car adapter (re-)connection is retried every 30 s by the scheduler itself
- *    if {@link CarPropertyAdapter#isConnected()} is false. This handles the
- *    case where the underlying android.car.Car createCar() / connect() call
- *    fails silently with no listener callback.
+ *  - EVHardware owns the vehicle connection, firmware routing and nullable reads.
  *  - All IPC + HTTP happens on the scheduler thread, never the main thread.
  */
 public class AbrpUploadService extends Service {
@@ -90,7 +90,6 @@ public class AbrpUploadService extends Service {
      * an early first sample is useful rather than misleading.
      */
     private static final long   FIRST_UPLOAD_DELAY_SEC = 20;
-    private static final long   CAR_RECONNECT_INTERVAL_SEC = 30;
     private static final long   LOCATION_RETRY_INTERVAL_SEC = 30;
     /**
      * Floor for how old a GPS fix may be and still describe where the car is now.
@@ -129,8 +128,7 @@ public class AbrpUploadService extends Service {
     // is effectively immutable for our purposes.
     private volatile Location lastLocation;
 
-    // Replaced on the main thread by connectCarAdapter, read from the scheduler thread.
-    private volatile CarPropertyAdapter carAdapter;
+    private EnergyTelemetryReader energyReader;
     private LocationManager      locationManager;
     private ScheduledExecutorService scheduler;
     private SharedPreferences    prefs;
@@ -139,14 +137,13 @@ public class AbrpUploadService extends Service {
     private Handler              mainHandler;
 
     private volatile long lastSuccessfulUploadMs = 0L;
-    private volatile long lastCarConnectAttemptMs = 0L;
     /** Previous tick's state, to detect a transition worth reporting immediately. */
     private volatile Boolean lastParked = null;
     private volatile Boolean lastCharging = null;
     private volatile long lastUploadAttemptMs = 0L;
     /** Charge detection state. Touched only from the scheduler thread, inside doUpload. */
     private final ChargingSignal chargingSignal = new ChargingSignal();
-    private final ChargeMeter    chargeMeter    = new ChargeMeter();
+    private final ChargingSessionMeter chargeMeter = new ChargingSessionMeter();
     private volatile UploadSettings settings = UploadSettings.defaults();
     /** False while no GPS subscription is delivering — drives the watchdog re-arm. */
     /** What the foreground notification currently says, so re-asserting it does not blank it. */
@@ -189,12 +186,8 @@ public class AbrpUploadService extends Service {
         running = true;
         prefs.edit().putBoolean("service_running", true).apply();
 
-        // Firmware-agnostic vehicle reads (speed, outside temp, park) go through
-        // EVHardware, which branches per generation internally and so works on all
-        // supported firmwares (SWI68/69/131/132/133/165). Idempotent. The vendor SOC/range
-        // reads stay on CarPropertyAdapter — EVHardware has no EV-battery abstraction and
-        // those IDs are confirmed for SWI68 only (see FIRMWARE.md).
-        EVHardware.INSTANCE.init(getApplicationContext());
+        // One shared, firmware-aware EVHardware snapshot owns every vehicle signal.
+        energyReader = new EnergyTelemetryReader(getApplicationContext());
         // The head unit's own weather service, bound for one reason: ENV_OUTSIDE_TEMPERATURE
         // is not implemented on this vehicle, so the car cannot say how warm it is outside
         // and something else has to. Idempotent, asynchronous, and absent on a car that does
@@ -202,7 +195,6 @@ public class AbrpUploadService extends Service {
         SaicWeather.INSTANCE.connect(getApplicationContext());
         registerWeatherReceiver();
 
-        connectCarAdapter();
         requestLocationUpdates();
 
         // Fire the first upload after a short warm-up, then every UPLOAD_INTERVAL_SEC.
@@ -268,7 +260,6 @@ public class AbrpUploadService extends Service {
     public void onDestroy() {
         Log.i(TAG, "Service stopping");
         if (scheduler != null) scheduler.shutdownNow();
-        if (carAdapter != null) carAdapter.disconnect();
         if (locationManager != null) {
             try { locationManager.removeUpdates(locationListener); } catch (Exception ignored) {}
         }
@@ -280,34 +271,6 @@ public class AbrpUploadService extends Service {
         running = false;
         prefs.edit().putBoolean("service_running", false).apply();
         super.onDestroy();
-    }
-
-    // ---------- Car adapter ----------
-
-    private void connectCarAdapter() {
-        lastCarConnectAttemptMs = System.currentTimeMillis();
-        // Must run on main thread because ServiceConnection callbacks need a Looper.
-        mainHandler.post(() -> {
-            if (carAdapter != null) {
-                try { carAdapter.disconnect(); } catch (Exception ignored) {}
-            }
-            carAdapter = new CarPropertyAdapter(new CarPropertyAdapter.Listener() {
-                @Override
-                public void onConnected() {
-                    Log.i(TAG, "CarPropertyAdapter connected");
-                }
-                @Override
-                public void onDisconnected() {
-                    Log.w(TAG, "CarPropertyAdapter disconnected — scheduler will retry");
-                    // Reconnect is handled by the scheduler watchdog.
-                }
-            });
-            try {
-                carAdapter.connect(AbrpUploadService.this);
-            } catch (Throwable t) {
-                Log.e(TAG, "carAdapter.connect threw", t);
-            }
-        });
     }
 
     // ---------- Upload cycle (runs on scheduler thread) ----------
@@ -324,15 +287,6 @@ public class AbrpUploadService extends Service {
                         + " boostLowSoc=" + settings.boostLowSoc
                         + " lowSoc=" + settings.lowSocPercent + "%");
             }
-            // Self-watchdog: if the car adapter looks dead and we haven't tried
-            // reconnecting recently, kick a reconnect.
-            if ((carAdapter == null || !carAdapter.isConnected())
-                    && System.currentTimeMillis() - lastCarConnectAttemptMs
-                       > CAR_RECONNECT_INTERVAL_SEC * 1000) {
-                Log.w(TAG, "Car adapter not connected, attempting reconnect");
-                connectCarAdapter();
-            }
-
             // Same watchdog for GPS: requestLocationUpdates used to run once in onCreate,
             // so a provider that was off at start-up — or dropped later — meant
             // position-less telemetry for the rest of the session.
@@ -366,96 +320,44 @@ public class AbrpUploadService extends Service {
 
         // Read whatever the car will give us. Every getter returns null when the read
         // fails, and a null field is omitted from the payload — never sent as 0.
-        boolean carUp = carAdapter != null && carAdapter.isConnected();
-
-        // Speed via EVHardware: it reads the standard AAOS property on every generation
-        // and returns km/h (PERF_VEHICLE_SPEED is m/s, and negative in reverse) — the raw
-        // vendor read here would have shipped m/s mislabelled as km/h.
-        Float speedKmh = EVHardware.INSTANCE.getVehicleSpeedKmh();
-
-        Float socRaw = carUp ? carAdapter.getFloatProperty(
-                CarPropertyAdapter.PROP_EV_BATTERY_PCT,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-        Integer soc = socRaw == null ? null : Math.round(socRaw);
-
-        Integer rangeKm = carUp ? carAdapter.getIntProperty(
-                CarPropertyAdapter.PROP_EV_RANGE_KM,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-        if (carUp && (rangeKm == null || rangeKm <= 0)) {
-            // The vendor cluster above is confirmed on SWI68 only; everywhere else it
-            // reads null or 0. RANGE_REMAINING is standard AAOS and is in METRES.
-            Float rangeM = carAdapter.getFloatProperty(
-                    CarPropertyAdapter.PROP_RANGE_REMAINING,
-                    CarPropertyAdapter.PROP_AREA_GLOBAL);
-            rangeKm = (rangeM == null || rangeM <= 0f) ? null : Math.round(rangeM / 1000f);
-        }
-
-        // Outside temp via EVHardware: standard AAOS ENV_OUTSIDE_TEMPERATURE, valid on
-        // every generation. The old local vendor ID (0x15602511) was SWI68-only.
-        Float extTemp = EVHardware.INSTANCE.getOutsideTempCelsius();
-
-        // Charge rate comes in mW, signed the VHAL's way: +ve charging, -ve driving.
-        Float chargeRateRaw = carUp ? carAdapter.getFloatProperty(
-                CarPropertyAdapter.PROP_EV_INSTANTANEOUS_CHARGE_RATE,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-        Float chargeRateKw = chargeRateRaw == null ? null : chargeRateRaw / 1_000_000f;
-
-        Boolean portConnected = carUp ? carAdapter.getBooleanProperty(
-                CarPropertyAdapter.PROP_EV_CHARGE_PORT_CONNECTED,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-
-        // Park state via EVHardware: it resolves gear per generation (VPM / CarStateClient
-        // / VehicleConditionManager depending on firmware). Null means unknown, not "moving".
-        Boolean parked = EVHardware.INSTANCE.isVehicleInPark();
+        long sampleMs = System.currentTimeMillis();
+        EnergySnapshot vehicle = energyReader.read(sampleMs);
+        boolean carUp = vehicle.getHasVehicleData();
+        Float speedKmh = vehicle.getSpeedKmh();
+        Integer soc = vehicle.getSocPercent() == null
+                ? null : Math.round(vehicle.getSocPercent());
+        Integer rangeKm = vehicle.getRangeKm() == null
+                ? null : Math.round(vehicle.getRangeKm());
+        Float extTemp = vehicle.getOutsideTempCelsius();
+        Float powerKw = vehicle.getBatteryPowerKw();
+        Float chargeRateKw = powerKw == null ? null : -powerKw;
+        Boolean portConnected = vehicle.getChargePortConnected();
+        Boolean parked = vehicle.getParked();
 
         // The charge port property is standard AAOS and this VHAL need not implement it.
         // Trusting it alone meant a plugged-in car that reads "unplugged" was treated as
         // parked-and-idle and throttled to one sample every 15 minutes for the whole
         // charge — see ChargingSignal for the fallbacks.
         Boolean charging = chargingSignal.evaluate(
-                System.currentTimeMillis(), portConnected, chargeRateKw, parked, soc);
-
-        // ABRP signs power the other way round from the VHAL: positive is power leaving
-        // the battery (driving), negative is power going into it (charging).
-        Float powerKw = chargeRateKw == null ? null : -chargeRateKw;
+                sampleMs, portConnected, chargeRateKw, parked, soc);
 
         // DCFC heuristic: charging at AC speeds (3-22 kW) is type-2; above ~25 kW
         // it can only be DC fast. Undecidable if either input is missing.
         Boolean dcfc = (charging == null || chargeRateKw == null)
                 ? null : (charging && chargeRateKw > 25f);
 
-        // Cabin temperature — try the standard HVAC property, may fail on this VHAL.
-        Float cabinTemp = carUp ? carAdapter.getFloatProperty(
-                CarPropertyAdapter.PROP_CABIN_TEMP,
-                CarPropertyAdapter.PROP_AREA_HVAC) : null;
-
-        // Pack temperature. Standard AAOS, but only since Android 14 — on AAOS 9 this is
-        // very likely absent, which costs one null read and omits the field.
-        Float battTemp = carUp ? carAdapter.getFloatProperty(
-                CarPropertyAdapter.PROP_EV_BATTERY_AVG_TEMP,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-
-        // Nominal usable pack capacity, in Wh — ABRP wants kWh.
-        Float capacityWh = carUp ? carAdapter.getFloatProperty(
-                CarPropertyAdapter.PROP_INFO_EV_BATTERY_CAPACITY,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-
-        // Energy currently in the pack, in Wh — ABRP wants kWh.
-        Float soeWh = carUp ? carAdapter.getFloatProperty(
-                CarPropertyAdapter.PROP_EV_BATTERY_LEVEL,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-
-        Float odometerKm = carUp ? carAdapter.getFloatProperty(
-                CarPropertyAdapter.PROP_ODOMETER,
-                CarPropertyAdapter.PROP_AREA_GLOBAL) : null;
-
-        // Climate setpoint via EVHardware: it already resolves HVAC per generation.
-        Float hvacSetpoint = EVHardware.INSTANCE.getTemperatureSetCelsius();
+        Float cabinTemp = vehicle.getCabinTempCelsius();
+        Float battTemp = vehicle.getBatteryTempCelsius();
+        Float capacityKwh = vehicle.getBatteryCapacityKwh();
+        Float soeKwh = vehicle.getBatteryEnergyKwh();
+        Float odometerKm = vehicle.getOdometerKm();
+        Float hvacSetpoint = vehicle.getClimate().getDriverTargetCelsius();
+        TirePressureSnapshot tires = vehicle.getTirePressures();
 
         // Sampled before the cadence check below: the meter integrates the charge rate
         // over time, so it has to see every tick, not only the ones that get uploaded.
         Double kwhCharged = chargeMeter.sample(
-                System.currentTimeMillis(), charging, chargeRateKw);
+                sampleMs, charging, chargeRateKw);
 
         // Thin out uploads while the car is parked and not charging. Evaluated here, once
         // parked/charging are known, so a transition is never delayed.
@@ -519,17 +421,15 @@ public class AbrpUploadService extends Service {
         tlm.parked        = parked;
         tlm.cabinTemp     = cabinTemp;
         tlm.battTempC     = battTemp;
-        tlm.capacityKwh   = capacityWh == null ? null : capacityWh / 1000f;
-        tlm.soeKwh        = soeWh == null ? null : soeWh / 1000f;
+        tlm.capacityKwh   = capacityKwh;
+        tlm.soeKwh        = soeKwh;
         tlm.kwhCharged    = kwhCharged;
         tlm.odometerKm    = odometerKm;
         tlm.hvacSetpointC = hvacSetpoint;
-        if (carUp) {
-            tlm.tirePressureFlKpa = tirePressure(CarPropertyAdapter.WHEEL_LEFT_FRONT);
-            tlm.tirePressureFrKpa = tirePressure(CarPropertyAdapter.WHEEL_RIGHT_FRONT);
-            tlm.tirePressureRlKpa = tirePressure(CarPropertyAdapter.WHEEL_LEFT_REAR);
-            tlm.tirePressureRrKpa = tirePressure(CarPropertyAdapter.WHEEL_RIGHT_REAR);
-        }
+        tlm.tirePressureFlKpa = tires.getFrontLeftKpa();
+        tlm.tirePressureFrKpa = tires.getFrontRightKpa();
+        tlm.tirePressureRlKpa = tires.getRearLeftKpa();
+        tlm.tirePressureRrKpa = tires.getRearRightKpa();
         if (loc != null) {
             tlm.lat       = loc.getLatitude();
             tlm.lon       = loc.getLongitude();
@@ -660,13 +560,6 @@ public class AbrpUploadService extends Service {
         String language = locale.getLanguage().toLowerCase(java.util.Locale.US);
         String country = locale.getCountry().toLowerCase(java.util.Locale.US);
         return country.isEmpty() ? language : language + "-" + country;
-    }
-
-    /** One wheel's pressure in kPa, or null when that wheel has no readable sensor. */
-    private Float tirePressure(int wheelArea) {
-        CarPropertyAdapter adapter = carAdapter;
-        if (adapter == null) return null;
-        return adapter.getFloatProperty(CarPropertyAdapter.PROP_TIRE_PRESSURE, wheelArea);
     }
 
     private void sendToAbrp(String apiKey, String token, String tlmJson, String summary,
