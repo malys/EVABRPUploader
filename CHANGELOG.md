@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-09-04
+
+### Fixed
+
+- **Speed was uploaded 3.6× too high.** `PERF_VEHICLE_SPEED` reports km/h on SWI68, not the
+  metres per second AAOS specifies, and EVHardware converted it a second time. Every telemetry
+  upload from this generation therefore carried a speed 3.6 times the real one, and ABRP's
+  consumption and arrival models were fed it. Proven on SWI68-29958-1300R67 by two recordings of
+  a 2.4 km route that came out at 7.69 km and 8.46 km — 129 and 124 km/h average over a few
+  minutes of town driving. The conversion is now evidence-gated per firmware generation in
+  EVHardware. Telemetry already sent to ABRP is not corrected by this.
+
 ## [2.2.0] - 2026-08-27
 
 ### Changed
