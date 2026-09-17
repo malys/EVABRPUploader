@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2026-09-17
+
+### Changed
+
+- Updated EVHardware to the shared `master` catalogue and telemetry implementation.
+
 ## [2.2.1] - 2026-09-04
 
 ### Fixed
