@@ -7,6 +7,13 @@
 [![Unstable](https://github.com/malys/EVABRPUploader/actions/workflows/unstable.yml/badge.svg)](https://github.com/malys/EVABRPUploader/actions/workflows/unstable.yml)
 [![Release](https://img.shields.io/github/v/release/malys/EVABRPUploader?include_prereleases&sort=semver)](https://github.com/malys/EVABRPUploader/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Part of EVSuite](https://img.shields.io/badge/part%20of-EVSuite-2f81f7)](https://malys.github.io/EVSuite/)
+
+> ⚠️ **This software runs on a vehicle, with no warranty and no liability.** Read
+> [DISCLAIMER.md](DISCLAIMER.md) before installing. It is provided "as is"; installing it is
+> your decision and your risk. Not affiliated with Iternio.
+> MG and MG4 are third-party marks used only to identify compatibility; this independent
+> project is not affiliated with or approved by SAIC Motor or MG Motor.
 
 Sends live telemetry from an **MG4 (SAIC eh32)** to
 [A Better Route Planner](https://abetterrouteplanner.com) — battery level, speed, range,
@@ -15,26 +22,35 @@ temperature, charging state and position — straight from the car's own APIs.
 No OBD dongle. No Home Assistant. No phone in the loop. The app runs on the car's head
 unit and talks to ABRP directly.
 
-> ⚠️ **No warranty, no liability.** This software is provided "as is" and runs on a
-> **vehicle**. Installing it is your decision and your risk — see
-> [`DISCLAIMER.md`](DISCLAIMER.md). Not affiliated with SAIC, MG Motor or Iternio.
-> MG and MG4 are third-party marks used only to identify compatibility; no official origin
-> or approval is claimed.
+EVABRPUploader is **independent**. It reads the vehicle through the shared
+[EVHardware](https://github.com/malys/EVHardware) layer and needs no other EVSuite app.
+It is a substantially reworked fork of Leon Kernan's `ABRP_Uploader` — see [Credits](#credits).
 
-> **Fork notice.** This is a fork of Leon Kernan's `ABRP_Uploader`, substantially
-> reworked. **Read [`LICENSE.md`](LICENSE.md) before redistributing anything** — the
-> upstream project carries no licence, which limits what may legally be published.
+## Part of EVSuite
+
+EVABRPUploader is one app of [**EVSuite**](https://malys.github.io/EVSuite/), a family of independent,
+offline-first apps for the MG4 head unit (Android Automotive OS 9). Each app installs on its
+own — pick only what you need. User guides and install instructions:
+<https://malys.github.io/EVSuite/>.
+
+Discover the rest of the suite:
+
+[![EVProfile](https://img.shields.io/badge/EVProfile-settings%20%26%20drive%20profiles-2f81f7?logo=github)](https://github.com/malys/EVProfile)
+[![EVTasker](https://img.shields.io/badge/EVTasker-rule%20automation-2f81f7?logo=github)](https://github.com/malys/EVTasker)
+[![EVChargePilot](https://img.shields.io/badge/EVChargePilot-energy%20%26%20trips-2f81f7?logo=github)](https://github.com/malys/EVChargePilot)
+[![EVLauncher](https://img.shields.io/badge/EVLauncher-home%20launcher-2f81f7?logo=github)](https://github.com/malys/EVLauncher)
+[![EVSwipe](https://img.shields.io/badge/EVSwipe-swipe%20shortcuts-2f81f7?logo=github)](https://github.com/malys/EVSwipe)
+[![EVHardware](https://img.shields.io/badge/EVHardware-shared%20vehicle%20library-2f81f7?logo=github)](https://github.com/malys/EVHardware)
 
 ---
 
 ## Contents
 
 - [Screenshots](#screenshots)
-- [Overview](#overview)
-- [Install](#install)
+- [How it works](#how-it-works)
 - [Configuration](#configuration)
+- [Install](#install)
 - [Building](#building)
-- [Project layout](#project-layout)
 - [Project documents](#project-documents)
 - [Security](#security)
 - [Contributing](#contributing)
@@ -49,7 +65,7 @@ unit and talks to ABRP directly.
 
 ---
 
-## Overview
+## How it works
 | Signal | Source | Firmwares |
 |---|---|---|
 | State of charge | `EVHardware` vendor charging service, with a SWI68 property fallback | all supported (fallback SWI68 only) |
@@ -80,58 +96,6 @@ place it set off from.
 
 **The app never writes to the car.** It only reads. Any write path would be a bug; see
 [`SECURITY.md`](SECURITY.md).
-
-## Install
-The MG4 head unit hides Settings and APK install. The known route in:
-The MG4 head unit has no visible way to open Settings or install an APK. The known route
-in (via the on-screen keyboard) is:
-
-1. Open any app with a text field and tap it to raise the on-screen keyboard — e.g. the
-   Amazon Music app's email/login field.
-2. **Long-press** the comma `,` (or the `@`) key on the keyboard.
-3. Tap **"Language settings"**.
-4. Tap the **search** icon in the top bar and type **`backup`**. It opens an empty page —
-   now press the **back** arrow, and you land in Android's Settings panel.
-5. Enable **Developer options**, and turn on **"Install unknown apps"** (unknown sources).
-6. In Settings, search **`storage`** — you now have access to internal storage and the USB
-   key. Navigate to the APK and tap it to install.
-
-> ⚠️ You are enabling developer options and sideloading on a car. Do this **parked**, and
-> only with an APK you trust. See [DISCLAIMER.md](DISCLAIMER.md).
-
-Two channels. Pick one — they install side by side.
-
-| Channel | Auto-update | Use it if |
-|---|---|---|
-| **Stable** | No. Contains no updater at all. | You want the car to run what you put on it |
-| **Unstable** | Yes, from GitHub pre-releases | You are testing and want fixes as they land |
-
-Grab the APK from [Releases](https://github.com/malys/EVABRPUploader/releases). Stable builds are the tagged ones; unstable builds
-are marked pre-release.
-
-### Getting the APK onto the car
-
-The MG4 has no visible file manager. To reach it:
-
-1. Open **Bluetooth Settings** and select the car name.
-2. Long-press the **comma** key until the keyboard settings appear.
-3. **Android Keyboard Settings → Languages**.
-4. Search for `file` in the search box at the top.
-5. That gives you the Files app.
-
-From there, open your USB stick and tap the APK.
-
-### First run
-
-1. Open the app.
-2. By default, the app prefills the open-source telemetry API key published by the
-   [SAIC Python MQTT Gateway](https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway#abrp-api-integration).
-   You can replace it with your own key. Get a token from your ABRP account.
-3. Paste the token, press **Test** (read-only — it does not send telemetry), then **Save**.
-4. Turn the switch on. The service restarts with the car from then on.
-
-Typing a long API key and token on the car's on-screen keyboard is painful. Instead you can
-put them in a text file and tap **Import file** — see [Config file](#config-file) below.
 
 ## Configuration
 | Setting | Default | Notes |
@@ -188,6 +152,59 @@ frequency.
 
 At defaults that is roughly **59 uploads/hour driving** and **3/hour parked**.
 
+## Install
+The MG4 head unit has no visible way to open Settings or install an APK. The known route
+in (via the on-screen keyboard) is:
+
+1. Open any app with a text field and tap it to raise the on-screen keyboard — e.g. the
+   Amazon Music app's email/login field.
+2. **Long-press** the comma `,` (or the `@`) key on the keyboard.
+3. Tap **"Language settings"**.
+4. Tap the **search** icon in the top bar and type **`backup`**. It opens an empty page —
+   now press the **back** arrow, and you land in Android's Settings panel.
+5. Enable **Developer options**, and turn on **"Install unknown apps"** (unknown sources).
+6. In Settings, search **`storage`** — you now have access to internal storage and the USB
+   key. Navigate to the APK and tap it to install.
+
+> ⚠️ You are enabling developer options and sideloading on a car. Do this **parked**, and
+> only with an APK you trust. See [DISCLAIMER.md](DISCLAIMER.md).
+
+### Channels
+
+Two channels. Pick one — they install side by side.
+
+| Channel | Auto-update | Use it if |
+|---|---|---|
+| **Stable** | No. Contains no updater at all. | You want the car to run what you put on it |
+| **Unstable** | Yes, from GitHub pre-releases | You are testing and want fixes as they land |
+
+Grab the APK from [Releases](https://github.com/malys/EVABRPUploader/releases). Stable builds are the tagged ones; unstable builds
+are marked pre-release.
+
+### Getting the APK onto the car
+
+The MG4 has no visible file manager. To reach it:
+
+1. Open **Bluetooth Settings** and select the car name.
+2. Long-press the **comma** key until the keyboard settings appear.
+3. **Android Keyboard Settings → Languages**.
+4. Search for `file` in the search box at the top.
+5. That gives you the Files app.
+
+From there, open your USB stick and tap the APK.
+
+### First run
+
+1. Open the app.
+2. By default, the app prefills the open-source telemetry API key published by the
+   [SAIC Python MQTT Gateway](https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway#abrp-api-integration).
+   You can replace it with your own key. Get a token from your ABRP account.
+3. Paste the token, press **Test** (read-only — it does not send telemetry), then **Save**.
+4. Turn the switch on. The service restarts with the car from then on.
+
+Typing a long API key and token on the car's on-screen keyboard is painful. Instead you can
+put them in a text file and tap **Import file** — see [Config file](#config-file) below.
+
 ## Building
 Requires JDK 17 and the Android SDK. With [mise](https://mise.jdev):
 
@@ -214,7 +231,7 @@ nothing to do with your ABRP API key, which you type into the app itself:
 **Never commit a keystore or a password.** Put them in `mise.local.toml`, which is
 gitignored, or in GitHub Actions secrets.
 
-## Project layout
+### Layout
 ```
 app/src/main      upload service, ABRP payload and UI
 EVHardware        shared vehicle reads, energy snapshot and integration
@@ -230,28 +247,28 @@ app/src/test      JVM unit tests
 | [DESIGN.md](DESIGN.md) | The EVSuite design system — colour, type, touch targets, icons |
 | [AGENTS.md](AGENTS.md) | Context for AI agents working in this repository |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to build, test and submit a change |
+| [FIRMWARE.md](FIRMWARE.md) | Supported firmware generations and confirmed behaviour |
 | [SECURITY.md](SECURITY.md) | Threat model and vulnerability disclosure |
 | [DISCLAIMER.md](DISCLAIMER.md) | Vehicle-safety disclaimer — read before installing |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
-| [LICENSE.md](LICENSE.md) | Licence text |
+| [LICENSE.md](LICENSE.md) | Licence and attribution notes |
 
 ## Security
 See [SECURITY.md](SECURITY.md) for the threat model and how to report a vulnerability
 privately.
 
 ## Contributing
-See [`CONTRIBUTING.md`](CONTRIBUTING.md). Short version: this code runs on a moving
+See [CONTRIBUTING.md](CONTRIBUTING.md). Short version: this code runs on a moving
 vehicle, so changes need tests and a clear account of what you verified on a car and what
 you did not.
 
 ## Legal
-- [`DISCLAIMER.md`](DISCLAIMER.md) — no warranty, no liability, not affiliated with the
-  carmaker or with ABRP.
-- [`LICENSE.md`](LICENSE.md) — unresolved licence status inherited from the fork source.
-  Read it before redistributing.
-- [`SECURITY.md`](SECURITY.md) — how to report a vulnerability privately.
+Released under the MIT License. See [LICENSE](LICENSE) and [LICENSE.md](LICENSE.md); the
+copyright notice naming Leon Kernan must travel with any copy. No warranty, no liability —
+see [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Credits
-- Original app: **Leon Kernan** — the car-API approach and the first working uploader.
+- Original app: **Leon Kernan** (`ABRP_Uploader`, MIT-licensed here) — the car-API approach
+  and the first working uploader.
 - ABRP telemetry API: [Iternio](https://documenter.getpostman.com/view/7396339/SWTK5a8w).
 - Sibling project: **EVProfile**, whose security and CI patterns this repo reuses.
