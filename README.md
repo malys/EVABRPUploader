@@ -7,7 +7,7 @@
 [![Unstable](https://github.com/malys/EVABRPUploader/actions/workflows/unstable.yml/badge.svg)](https://github.com/malys/EVABRPUploader/actions/workflows/unstable.yml)
 [![Release](https://img.shields.io/github/v/release/malys/EVABRPUploader?include_prereleases&sort=semver)](https://github.com/malys/EVABRPUploader/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Part of EVSuite](https://img.shields.io/badge/part%20of-EVSuite-2f81f7)](https://malys.github.io/EVSuite/)
+[![Part of EVSuite](https://img.shields.io/badge/part%20of-EVSuite-2f81f7)](https://malys.github.io/EVSuite_site/)
 
 > ⚠️ **This software runs on a vehicle, with no warranty and no liability.** Read
 > [DISCLAIMER.md](DISCLAIMER.md) before installing. It is provided "as is"; installing it is
@@ -28,10 +28,10 @@ It is a substantially reworked fork of Leon Kernan's `ABRP_Uploader` — see [Cr
 
 ## Part of EVSuite
 
-EVABRPUploader is one app of [**EVSuite**](https://malys.github.io/EVSuite/), a family of independent,
+EVABRPUploader is one app of [**EVSuite**](https://malys.github.io/EVSuite_site/), a family of independent,
 offline-first apps for the MG4 head unit (Android Automotive OS 9). Each app installs on its
 own — pick only what you need. User guides and install instructions:
-<https://malys.github.io/EVSuite/>.
+<https://malys.github.io/EVSuite_site/>.
 
 Discover the rest of the suite:
 
