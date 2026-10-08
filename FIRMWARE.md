@@ -43,8 +43,11 @@ per-signal split.
 Owners on SWI69 R45 report every upload refused with HTTP 400. ABRP requires `soc`, so
 since CR-044 a sample without SOC is not posted. The in-app log says
 "SOC not readable on SWI69 — not sent" instead. A read path for those generations needs an
-`EV_HW` log from the car before it is added (the Diagnostic tab's property probe already
-lists the standard `EV_BATTERY_LEVEL` and `INFO_EV_BATTERY_CAPACITY`).
+`EV_HW` log from the car before it is added. EVProfile's unstable Diagnostic has a **SOC
+sources** tool for that (EVHardware `VendorSurfaceProbe`). It reads each candidate side by side:
+the charging service, the vendor ID, the standard `EV_BATTERY_LEVEL` / `INFO_EV_BATTERY_CAPACITY`
+pair and the vendor setting getters. Its before/after capture taken across a SOC change finds a
+property that is not named anywhere.
 
 ## Emulator fidelity
 
