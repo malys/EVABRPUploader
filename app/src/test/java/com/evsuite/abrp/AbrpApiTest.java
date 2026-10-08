@@ -47,4 +47,30 @@ public class AbrpApiTest {
         String body = AbrpApi.formBody("a+b/c", "d&e=f", "{\"utc\":1}");
         assertEquals("api_key=a%2Bb%2Fc&token=d%26e%3Df&tlm=%7B%22utc%22%3A1%7D", body);
     }
+
+    /** [CR-044] A refused sample names ABRP's reason in the in-app log, never the raw body. */
+    @Test
+    public void errorDetailKeepsOnlyTheReason() {
+        assertEquals("Missing soc",
+                AbrpApi.errorDetail("{\"status\":\"error\",\"error\":\"Missing soc\",\"tlm\":\"x\"}"));
+        assertEquals("a; b", AbrpApi.errorDetail("{\"errors\":[\"a\",\"b\"]}"));
+        assertEquals("bad token", AbrpApi.errorDetail("{\"message\":\"bad token\"}"));
+    }
+
+    @Test
+    public void errorDetailIsEmptyWithoutAReason() {
+        assertEquals("", AbrpApi.errorDetail(null));
+        assertEquals("", AbrpApi.errorDetail(""));
+        assertEquals("", AbrpApi.errorDetail("<html>Bad Request</html>"));
+        assertEquals("", AbrpApi.errorDetail("{\"status\":\"error\"}"));
+    }
+
+    @Test
+    public void errorDetailIsBoundedAndSingleLine() {
+        StringBuilder longReason = new StringBuilder();
+        for (int i = 0; i < 300; i++) longReason.append('x');
+        String detail = AbrpApi.errorDetail("{\"error\":\"" + longReason + "\\nnext\"}");
+        assertEquals(AbrpApi.MAX_ERROR_DETAIL, detail.length());
+        assertFalse(AbrpApi.errorDetail("{\"error\":\"a\\nb\"}").contains("\n"));
+    }
 }

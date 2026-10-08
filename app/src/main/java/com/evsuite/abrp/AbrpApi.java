@@ -99,6 +99,42 @@ final class AbrpApi {
              + "&tlm="    + URLEncoder.encode(tlmJson, StandardCharsets.UTF_8.name());
     }
 
+    /** Longest error reason kept for the in-app log. */
+    static final int MAX_ERROR_DETAIL = 120;
+
+    /**
+     * ABRP's own reason for a refused sample, short enough for the in-app log, or "" when
+     * the body carries none.
+     *
+     * Only the error/message fields are kept, never the raw body: a body can echo request
+     * details, and the in-app log is readable by anyone sitting in the car. Without this the
+     * log says "HTTP 400" and nothing on the head unit tells a missing field from a bad key.
+     */
+    static String errorDetail(String body) {
+        if (body == null || body.isEmpty()) return "";
+        org.json.JSONObject json;
+        try {
+            json = new org.json.JSONObject(body);
+        } catch (org.json.JSONException e) {
+            return "";
+        }
+        String detail = json.optString("error", "");
+        if (detail.isEmpty()) {
+            org.json.JSONArray errors = json.optJSONArray("errors");
+            if (errors != null) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < errors.length(); i++) {
+                    if (sb.length() > 0) sb.append("; ");
+                    sb.append(errors.optString(i, ""));
+                }
+                detail = sb.toString();
+            }
+        }
+        if (detail.isEmpty()) detail = json.optString("message", "");
+        detail = detail.replaceAll("\\p{Cntrl}", " ").trim();
+        return detail.length() > MAX_ERROR_DETAIL ? detail.substring(0, MAX_ERROR_DETAIL) : detail;
+    }
+
     private static String readBody(HttpURLConnection conn, int code) {
         // getErrorStream() returns null on some non-200 responses; passing null to
         // InputStreamReader throws. Checked rather than left to the catch-all below.

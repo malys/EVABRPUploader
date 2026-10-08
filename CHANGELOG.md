@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Every upload refused with HTTP 400 when SOC cannot be read** (reported on SWI69 R45).
+  ABRP requires `soc`, and the uploader posted samples without it. A sample without SOC is
+  no longer sent; the in-app log and notification say "SOC not readable on <firmware> — not
+  sent" instead. The connection test kept passing because it never posts, which hid the
+  cause.
+- A refused upload now shows ABRP's short error reason next to the HTTP code in the in-app
+  log. Only the `error`/`errors`/`message` field is kept, capped at 120 characters, never
+  the raw body.
+
 ## [2.2.2] - 2026-09-17
 
 ### Changed

@@ -454,6 +454,18 @@ public class AbrpUploadService extends Service {
         // the driver can see it.
         Log.i(TAG, "TLM " + summary);
 
+        if (!tlm.canUpload()) {
+            // Reported on SWI69: SOC unreadable, every sample refused with HTTP 400 while the
+            // connection test (which never posts) said OK. Say why instead of posting.
+            String reason = "SOC not readable on " + vehicle.getFirmware() + " — not sent";
+            Log.w(TAG, reason);
+            uploadLog.record(new UploadLog.Entry(
+                    System.currentTimeMillis(), 0, false, reason, summary));
+            prefs.edit().putString("last_upload_status", reason).apply();
+            updateNotification(reason);
+            return;
+        }
+
         sendToAbrp(apiKey, token, tlmJson, summary, soc, speedKmh, carUp);
     }
 
@@ -571,8 +583,10 @@ public class AbrpUploadService extends Service {
             // The response body can echo request details — debug builds only.
             if (BuildConfig.DEBUG) Log.d(TAG, "ABRP [" + code + "]: " + response.body);
 
-            uploadLog.record(new UploadLog.Entry(System.currentTimeMillis(), code,
-                    code == 200, code == 200 ? "OK" : ("HTTP " + code), summary));
+            String reason = code == 200 ? "" : AbrpApi.errorDetail(response.body);
+            uploadLog.record(new UploadLog.Entry(System.currentTimeMillis(), code, code == 200,
+                    code == 200 ? "OK" : ("HTTP " + code + (reason.isEmpty() ? "" : ": " + reason)),
+                    summary));
 
             if (code == 200) {
                 lastSuccessfulUploadMs = System.currentTimeMillis();

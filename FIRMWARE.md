@@ -32,12 +32,19 @@ These IDs are therefore confirmed for **SWI68 (R69) only**. MG4 ships other
 generations (SWI69/131/132/133/165) and the VHAL binary lists many SAIC
 platforms (`eh32`, `as33`, `ec32`, `ip42`, …); the IDs may differ there.
 
-Only SOC and range still ride these vendor IDs. Speed, outside temperature and
-park state are read through `EVHardware`, which branches per generation
-internally and so covers all six firmwares — `CarPropertyAdapter` carries just
-the SWI68 EV cluster plus the standard-AAOS charge / cabin-temp reads. EVHardware
-has no EV-battery abstraction for any generation, which is why SOC/range cannot yet
-follow the same path. See `AGENTS.md` for the full per-signal split.
+Every signal is now read through EVHardware's `EnergyTelemetryReader`. SOC tries the
+SAIC charging service (`SaicCharging`) first and falls back to the vendor ID above.
+Range tries `SaicCharging`, then the standard-AAOS range, then the vendor ID.
+`CarPropertyAdapter` is a debug discovery transport only. See `AGENTS.md` for the full
+per-signal split.
+
+**SOC on the A9 generations (SWI69/131/132) is not proven.** The SAIC vendor hub that
+`SaicCharging` binds to does not exist there, and the vendor ID is confirmed on SWI68 only.
+Owners on SWI69 R45 report every upload refused with HTTP 400. ABRP requires `soc`, so
+since CR-044 a sample without SOC is not posted. The in-app log says
+"SOC not readable on SWI69 — not sent" instead. A read path for those generations needs an
+`EV_HW` log from the car before it is added (the Diagnostic tab's property probe already
+lists the standard `EV_BATTERY_LEVEL` and `INFO_EV_BATTERY_CAPACITY`).
 
 ## Emulator fidelity
 

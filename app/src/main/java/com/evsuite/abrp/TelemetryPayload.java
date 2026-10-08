@@ -159,6 +159,15 @@ final class TelemetryPayload {
         return value == null ? null : (value ? 1 : 0);
     }
 
+    /**
+     * ABRP refuses a sample without {@code utc} and {@code soc} (HTTP 400). {@code utc} is
+     * always set, so this is "was SOC read". Omitting an unreadable SOC stays right — a false
+     * zero wrecks the route plan — but posting the sample anyway only buys a 400 every tick.
+     */
+    boolean canUpload() {
+        return soc != null;
+    }
+
     /** ABRP expects kW with 2 decimals; avoids a locale-dependent String.format. */
     private static double round2(float value) {
         return Math.round(value * 100.0) / 100.0;

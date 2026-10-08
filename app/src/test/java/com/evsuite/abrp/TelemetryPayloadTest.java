@@ -330,4 +330,21 @@ public class TelemetryPayloadTest {
         assertTrue(summary, summary.startsWith("utc=1700000000"));
         assertTrue(summary, summary.contains("| omitted: soc,speed,"));
     }
+
+    /** [CR-044] ABRP refuses a sample without soc: an unreadable SOC must not be posted. */
+    @Test
+    public void sampleWithoutSocIsNotUploadable() {
+        TelemetryPayload t = fullCar();
+        t.soc = null;
+        assertFalse(t.canUpload());
+        assertFalse(new TelemetryPayload(1_700_000_000L).canUpload());
+    }
+
+    @Test
+    public void sampleWithSocIsUploadable() {
+        assertTrue(fullCar().canUpload());
+        TelemetryPayload socOnly = new TelemetryPayload(1_700_000_000L);
+        socOnly.soc = 0;   // a real 0 % reading is still a reading
+        assertTrue(socOnly.canUpload());
+    }
 }
